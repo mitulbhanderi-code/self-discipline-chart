@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a237e">
+  <meta name="description" content="Self Discipline Chart - Daily Habit Tracker">
+  <title>Self Discipline Chart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Gujarati:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Firebase 10 Compat SDK (CDN - no install needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
+  <style>
+    :root {
+      --brand: #1a56db;
+      --brand-glow: rgba(26,86,219,.2);
+      --green: #0e9f6e;
+      --red: #e02424;
+      --yellow: #f59e0b;
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --surface3: #2a2f47;
+      --border: rgba(255,255,255,.08);
+      --border2: rgba(255,255,255,.14);
+      --text: #e8eaf6;
+      --text2: #9399b2;
+      --text3: #6b7094;
+      --radius: 14px;
+      --shadow: 0 4px 24px rgba(0,0,0,.4);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter','Noto Sans Gujarati',Arial,sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; }
+    body::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: linear-gradient(rgba(26,86,219,.03) 1px,transparent 1px), linear-gradient(90deg,rgba(26,86,219,.03) 1px,transparent 1px);
+      background-size: 32px 32px;
+    }
+    /* â”€â”€â”€ FIREBASE BANNER â”€â”€â”€ */
+    #fbBanner {
+      display: none; padding: 10px 16px; font-size: 12px; font-weight: 600; text-align: center;
+      background: rgba(245,158,11,.12); border-bottom: 1px solid rgba(245,158,11,.3); color: var(--yellow);
+      line-height: 1.6;
+    }
+    /* â”€â”€â”€ HEADER â”€â”€â”€ */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(26,29,39,.95);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border); padding: 14px 16px 12px;
+    }
+    .header-top { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .logo-icon {
+      width: 38px; height: 38px; flex-shrink: 0;
+      background: linear-gradient(135deg,var(--brand),#7c3aed);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; box-shadow: 0 0 16px var(--brand-glow);
+    }
+    h1 {
+      font-size: clamp(17px,4vw,22px); font-weight: 800; letter-spacing: -.3px;
+      background: linear-gradient(135deg,#e0e7ff,#a5b4fc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .subtitle { text-align: center; font-size: 11px; color: var(--text3); margin-top: 2px; }
+    /* â”€â”€â”€ CONTROLS â”€â”€â”€ */
+    .controls { display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .month-nav {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface2); border: 1px solid var(--border2); border-radius: 12px; padding: 5px 8px;
+    }
+    .btn-nav {
+      width: 32px; height: 32px; border: 0; border-radius: 8px;
+      background: var(--surface3); color: var(--text); font-size: 18px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background .18s, transform .12s;
+    }
+    .btn-nav:hover { background: var(--brand); transform: scale(1.07); }
+    .btn-nav:active { transform: scale(.95); }
+    select.month-select {
+      border: 0; background: transparent; color: var(--text);
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      cursor: pointer; outline: none; padding: 4px 6px;
+    }
+    select.month-select option { background: #1a1d27; color: var(--text); }
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px; border: 0;
+      border-radius: 10px; padding: 8px 13px; font-family: inherit;
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0) scale(.97); }
+    .btn-success { background: linear-gradient(135deg,#059669,#0e9f6e); color: #fff; }
+    .btn-danger  { background: linear-gradient(135deg,#dc2626,#e02424); color: #fff; }
+    .btn-ghost   { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); }
+    .btn-ghost:hover { background: var(--surface3); color: var(--text); }
+    .btn-file-wrap { position: relative; }
+    .btn-file-wrap input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    /* â”€â”€â”€ SYNC STATUS â”€â”€â”€ */
+    #syncStatus {
+      font-size: 11px; color: var(--text3); text-align: center; margin-top: 7px;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); display: inline-block; transition: background .3s; }
+    .sync-dot.ok  { background: var(--green); box-shadow: 0 0 6px rgba(14,159,110,.5); }
+    .sync-dot.err { background: var(--red); }
+    /* â”€â”€â”€ SUMMARY (3 cards only) â”€â”€â”€ */
+    .summary { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 12px; padding: 8px 20px; text-align: center; min-width: 90px;
+      transition: transform .18s, box-shadow .18s;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .card b {
+      display: block; font-size: 22px; font-weight: 800;
+      background: linear-gradient(135deg,#a5b4fc,var(--brand));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .card span { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: .5px; text-transform: uppercase; }
+    /* â”€â”€â”€ PROGRESS â”€â”€â”€ */
+    .progress-wrap { margin: 10px 2px 0; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+    .progress { height: 8px; background: var(--surface3); border-radius: 20px; overflow: hidden; }
+    .progress > div { height: 100%; width: 0; background: linear-gradient(90deg,var(--brand),var(--green)); border-radius: 20px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+    /* â”€â”€â”€ TABLE AREA â”€â”€â”€ */
+    .wrap { padding: 16px 12px; position: relative; z-index: 1; }
+    .table-container {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius); overflow: auto; box-shadow: var(--shadow);
+      scrollbar-width: thin; scrollbar-color: var(--surface3) transparent;
+    }
+    .table-container::-webkit-scrollbar { height: 6px; width: 6px; }
+    .table-container::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 10px; }
+    table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+    th, td { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); height: 44px; text-align: center; font-size: 12px; }
+    th:last-child, td:last-child { border-right: 0; }
+    thead th { background: var(--surface2); color: var(--text2); font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; position: sticky; top: 0; z-index: 5; }
+    .col-num { width: 40px; min-width: 40px; font-weight: 700; position: sticky; left: 0; z-index: 6; }
+    thead .col-num { z-index: 12; }
+    tbody .col-num { background: var(--surface); }
+    .col-habit { width: 205px; min-width: 180px; text-align: left; padding: 4px 10px; position: sticky; left: 40px; z-index: 6; }
+    thead .col-habit { z-index: 12; background: var(--surface2); }
+    tbody .col-habit { background: var(--surface); }
+    .col-day { width: 38px; min-width: 38px; font-weight: 600; color: var(--text3); }
+    .col-total { width: 78px; min-width: 78px; font-weight: 700; position: sticky; right: 0; z-index: 6; }
+    thead .col-total { z-index: 12; background: rgba(245,158,11,.12); color: var(--yellow); }
+    tbody .col-total { background: rgba(245,158,11,.05); color: var(--yellow); }
+    td.today-col { background: rgba(26,86,219,.06); }
+    thead th.today-col { background: rgba(26,86,219,.18); color: #a5b4fc; font-weight: 800; }
+    /* â”€â”€â”€ CHECKBOX TICK BUTTON â”€â”€â”€ */
+    .tick {
+      width: 100%; height: 43px; border: 0; background: transparent;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent; transition: background .1s;
+    }
+    .tick:hover { background: rgba(255,255,255,.04); }
+    .tick:active { transform: scale(.9); }
+    .tick-box {
+      width: 24px; height: 24px;
+      border: 2px solid rgba(255,255,255,.18);
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 900; color: transparent;
+      transition: all .15s cubic-bezier(.4,0,.2,1);
+      user-select: none;
+    }
+    .tick:hover .tick-box { border-color: rgba(255,255,255,.38); }
+    .tick.yes .tick-box {
+      background: var(--green); border-color: var(--green); color: #fff;
+      box-shadow: 0 0 8px rgba(14,159,110,.38); transform: scale(1.1);
+    }
+    .tick.no .tick-box { background: var(--red); border-color: var(--red); color: #fff; }
+    /* â”€â”€â”€ EDIT HABIT NAME â”€â”€â”€ */
+    .edit-name {
+      width: 100%; border: 0; background: transparent; color: var(--text);
+      font-family: inherit; font-size: 13px; font-weight: 500; padding: 4px 0; outline: none;
+      border-bottom: 1px solid transparent; transition: border-color .18s;
+    }
+    .edit-name:focus { border-bottom-color: var(--brand); }
+    .edit-name:hover { border-bottom-color: var(--border2); }
+    /* â”€â”€â”€ TFOOT â”€â”€â”€ */
+    tfoot th { background: var(--surface2); color: var(--text2); font-size: 11px; font-weight: 700; letter-spacing: .3px; position: sticky; bottom: 0; z-index: 5; }
+    tfoot .col-num { z-index: 12; }
+    tfoot .col-habit { z-index: 12; background: var(--surface2); text-align: left; }
+    .daily-count { font-size: 12px; font-weight: 700; }
+    .daily-count.good { color: var(--green); }
+    .daily-count.mid  { color: var(--yellow); }
+    .daily-count.bad  { color: var(--red); }
+    /* â”€â”€â”€ FOOTER NOTE â”€â”€â”€ */
+    .footer-note {
+      text-align: center; font-size: 11px; color: var(--text3); margin-top: 14px;
+      padding: 10px 14px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; line-height: 1.7;
+    }
+    .footer-note b { color: var(--text2); }
+    /* â”€â”€â”€ TOAST â”€â”€â”€ */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2); border: 1px solid var(--border2);
+      color: var(--text); padding: 10px 22px; border-radius: 12px;
+      font-size: 13px; font-weight: 600; z-index: 999;
+      box-shadow: var(--shadow); transition: transform .3s cubic-bezier(.4,0,.2,1), opacity .3s;
+      opacity: 0; white-space: nowrap; pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    /* â”€â”€â”€ RESPONSIVE â”€â”€â”€ */
+    @media (max-width: 600px) {
+      .btn { padding: 7px 10px; font-size: 12px; }
+      .col-habit { width: 145px; min-width: 130px; }
+      .card { min-width: 80px; padding: 7px 12px; }
+      .card b { font-size: 18px; }
+    }
+    tbody tr:hover td.col-habit, tbody tr:hover td.col-num { background: var(--surface2); }
+  </style>
+</head>
+
+<body>
+
+  <!-- Firebase not configured banner -->
+  <div id="fbBanner">
+    &#9888;&#65039; Firebase config set nathi &mdash; data sirf is browser ma save thase.
+    index.html ma <b>firebaseConfig</b> values fill karo (YOUR_API_KEY wagere).
+  </div>
+
+  <header>
+    <div class="header-top">
+      <div class="logo-icon">&#128202;</div>
+      <div>
+        <h1>સેલ્ફ ડિસીપ્લીન ચાર્ટ</h1>
+        <p class="subtitle">સ્વાસ્થ્ય + નોલેજ + વર્ક + રેકોર્ડ</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="month-nav">
+        <button class="btn-nav" id="prevBtn" onclick="changeMonth(-1)" aria-label="Previous month">&#8249;</button>
+        <select id="month" class="month-select" onchange="render()" aria-label="Month select"></select>
+        <button class="btn-nav" id="nextBtn" onclick="changeMonth(1)" aria-label="Next month">&#8250;</button>
+      </div>
+      <button class="btn btn-ghost" onclick="goToday()" id="todayBtn">&#128197; Today</button>
+      <button class="btn btn-ghost" onclick="shareMonth()" id="shareBtn">&#128279; Share</button>
+      <button class="btn btn-success" onclick="downloadData()" id="backupBtn">&#128190; Backup</button>
+      <span class="btn-file-wrap">
+        <button class="btn btn-ghost" id="restoreBtn">&#128194; Restore</button>
+        <input type="file" accept=".json" onchange="restoreData(event)" aria-label="Restore backup file">
+      </span>
+      <button class="btn btn-danger" onclick="resetMonth()" id="resetBtn">&#128465; Reset</button>
+    </div>
+
+    <!-- Sync status indicator -->
+    <div id="syncStatus">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncLabel">Connecting&#8230;</span>
+    </div>
+
+    <!-- 3 summary cards ONLY: YES, NO, PROGRESS -->
+    <div class="summary">
+      <div class="card"><b id="yesCount">0</b><span>YES &#10003;</span></div>
+      <div class="card"><b id="noCount">0</b><span>NO &#10007;</span></div>
+      <div class="card"><b id="percent">0%</b><span>PROGRESS</span></div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>Month Progress</span>
+        <span id="progressLabel">0 / 0 YES</span>
+      </div>
+      <div class="progress"><div id="bar"></div></div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="table-container">
+      <table id="chart" role="grid" aria-label="Habit tracker chart"></table>
+    </div>
+    <div class="footer-note">Cell પર વારંવાર ટચ કરો: <b>ખાલી → ✓ YES → ✗ NO → ખાલી</b>.
+      Data આ browserમાં સાચવાય છે. Browser/site data clear કરશો તો local data દૂર થઈ શકે છે.</div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       FIREBASE CONFIG
+       Steps:
+       1. Go to https://console.firebase.google.com
+       2. Open your project -> Project Settings -> Your apps -> SDK
+       3. Copy the config object and paste below
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+    const firebaseConfig = {
+      apiKey:            "AIzaSyB7DHGR4SCQUPeBO9esVk-kF_kq67XQ",
+      authDomain:        "my-discipline-chart-a4c8f.firebaseapp.com",
+      databaseURL:       "https://my-discipline-chart-a4c8f-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId:         "my-discipline-chart-a4c8f",
+      storageBucket:     "my-discipline-chart-a4c8f.firebasestorage.app",
+      messagingSenderId: "425700964799",
+      appId:             "1:425700964799:web:71b3051ba046eff0d4090a"
+    };
+
+    /* â”€â”€ Firebase Init â”€â”€ */
+    let _fbDb = null;
+    const _fbReady = firebaseConfig.apiKey !== "YOUR_API_KEY";
+
+    if (_fbReady) {
+      try {
+        firebase.initializeApp(firebaseConfig);
+        _fbDb = firebase.database();
+        // Real-time connection indicator
+        _fbDb.ref(".info/connected").on("value", snap => {
+          const ok = snap.val() === true;
+          document.getElementById("syncDot").className = "sync-dot " + (ok ? "ok" : "err");
+          document.getElementById("syncLabel").textContent = ok
+            ? "Firebase synced âœ“"
+            : "Offline â€” local only";
+        });
+      } catch(e) {
+        console.warn("Firebase init error:", e);
+        document.getElementById("syncDot").className = "sync-dot err";
+        document.getElementById("syncLabel").textContent = "Firebase error";
+      }
+    } else {
+      document.getElementById("fbBanner").style.display = "block";
+      document.getElementById("syncDot").className = "sync-dot";
+      document.getElementById("syncLabel").textContent = "Firebase not configured â€” local only";
+    }
+
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       HABITS
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+    const DEFAULT_HABITS = [
+      "પ્રાર્થના + મેડિટેશન",
+      "સૂર્ય નમસ્કાર",
+      "30 મિનિટ વોકિંગ",
+      "વાંચન ઘરે",
+      "વાંચન ઓફિસે",
+      "વિડિયો ઘરે / ઓફિસે",
+      "W TIME 9:00am to 9:00pm",
+      "1 કલાક ભાવફેરી",
+      "ગોલ વિઝ્યુઅલાઇઝ",
+      "5 કોલ",
+      "1 Agent Meet",
+      "1 BNI + Client",
+      "Status",
+      "કોલેશન + પેન્ડિંગ કામ",
+      "રિપોર્ટિંગ આપવું",
+      "બુક લખવી"
+    ];
+    const HABIT_NAMES_KEY = "discipline_habit_names";
+    let habits = [...DEFAULT_HABITS];
+
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       GUJARATI MONTHS
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+    const MONTHS = [
+      "જાન્યુઆરી", "ફેબ્રુઆરી", "માર્ચ", "એપ્રિલ", "મે", "જૂન",
+      "જુલાઈ", "ઓગસ્ટ", "સપ્ટેમ્બર", "ઓક્ટોબર", "નવેમ્બર", "ડિસેમ્બર"
+    ];
+
+    /* â”€â”€ State â”€â”€ */
+    const now = new Date();
+    const monthSelect = document.getElementById("month");
+    let selectedMonth = new URLSearchParams(location.search).get("month")
+      || (now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0"));
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(selectedMonth))
+      selectedMonth = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
+
+    let _fbListener = null;
+    let _fbListenMonth = null;
+    let _isRendering = false;
+
+    /* â”€â”€ Load habit names â”€â”€ */
+    function loadHabitNames() {
+      try {
+        const s = JSON.parse(localStorage.getItem(HABIT_NAMES_KEY) || "null");
+        if (Array.isArray(s)) s.forEach((n,i) => { if (n && i < habits.length) habits[i] = n; });
+      } catch(e) {}
+    }
+    function saveHabitNames() {
+      try { localStorage.setItem(HABIT_NAMES_KEY, JSON.stringify(habits)); } catch(e) {}
+      if (_fbDb) _fbDb.ref("habit_names").set(habits).catch(()=>{});
+    }
+
+    /* â”€â”€ Build month dropdown â”€â”€ */
+    function buildMonthOptions() {
+      for (let y = 2025; y <= 2035; y++) {
+        for (let m = 1; m <= 12; m++) {
+          const o = document.createElement("option");
+          o.value = `${y}-${String(m).padStart(2,"0")}`;
+          o.textContent = `${MONTHS[m-1]} ${y}`;
+          monthSelect.appendChild(o);
+        }
+      }
+      monthSelect.value = selectedMonth;
+    }
+
+    /* â”€â”€ Storage helpers â”€â”€ */
+    function storageKey() { return "discipline_" + selectedMonth; }
+    function load() {
+      try { return JSON.parse(localStorage.getItem(storageKey()) || "{}"); }
+      catch(e) { return {}; }
+    }
+    function daysInMonth() {
+      const [y, m] = selectedMonth.split("-").map(Number);
+      return new Date(y, m, 0).getDate();
+    }
+    function isToday(d) {
+      const [y, m] = selectedMonth.split("-").map(Number);
+      return now.getFullYear()===y && now.getMonth()+1===m && now.getDate()===d;
+    }
+
+    /* â”€â”€ Navigation â”€â”€ */
+    function changeMonth(dir) {
+      const d = new Date(selectedMonth + "-01T00:00:00");
+      d.setMonth(d.getMonth() + dir);
+      selectedMonth = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+      monthSelect.value = selectedMonth;
+      render();
+    }
+    function goToday() {
+      selectedMonth = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
+      monthSelect.value = selectedMonth;
+      render();
+      showToast("&#128197; Current month loaded");
+    }
+
+    /* â”€â”€ Firebase real-time listener â”€â”€ */
+    function subscribeFirebase() {
+      if (!_fbDb) return;
+      // Unsubscribe old listener
+      if (_fbListenMonth && _fbListener) {
+        _fbDb.ref("discipline/" + _fbListenMonth).off("value", _fbListener);
+        _fbListener = null;
+      }
+      _fbListenMonth = selectedMonth;
+      const ref = _fbDb.ref("discipline/" + selectedMonth);
+      _fbListener = ref.on("value", snap => {
+        const fbData = snap.val() || {};
+        // Cache locally
+        try { localStorage.setItem(storageKey(), JSON.stringify(fbData)); } catch(e) {}
+        // Re-render if not mid-interaction
+        if (!_isRendering) renderFromData(fbData);
+      }, err => console.warn("Firebase listen error:", err));
+    }
+
+    /* â”€â”€ Click a cell: YES -> NO -> empty -> cycle â”€â”€ */
+    function cycle(h, d) {
+      _isRendering = true;
+      const data = load();
+      const k = `${h}_${d}`;
+      data[k] = data[k] === "yes" ? "no" : data[k] === "no" ? "" : "yes";
+      if (!data[k]) delete data[k];
+      // Optimistic local update immediately
+      try { localStorage.setItem(storageKey(), JSON.stringify(data)); } catch(e) {}
+      updateCell(h, d, data[k] || "");
+      updateSummary(data);
+      // Write to Firebase async (no await)
+      if (_fbDb) _fbDb.ref("discipline/" + selectedMonth).set(data).catch(()=>{});
+      _isRendering = false;
+    }
+
+    /* â”€â”€ Update single cell (optimistic) â”€â”€ */
+    function updateCell(h, d, state) {
+      const el = document.querySelector(`[data-h="${h}"][data-d="${d}"]`);
+      if (!el) return;
+      el.className = "tick " + state;
+      const box = el.querySelector(".tick-box");
+      if (box) box.textContent = state === "yes" ? "\u2713" : state === "no" ? "\u2717" : "";
+      el.title = state === "yes" ? "YES \u2713 \u2014 click for NO"
+               : state === "no"  ? "NO \u2717 \u2014 click to clear"
+               : "Empty \u2014 click for YES";
+    }
+
+    /* â”€â”€ Render from data object â”€â”€ */
+    function renderFromData(data) {
+      const days = daysInMonth();
+
+      let html = "<thead><tr>";
+      html += '<th class="col-num">#</th>';
+      html += '<th class="col-habit">નામ / Habit</th>';
+      for (let d = 1; d <= days; d++) {
+        const tod = isToday(d);
+        html += `<th class="col-day${tod ? " today-col" : ""}">${d}</th>`;
+      }
+      html += '<th class="col-total">TOTAL</th></tr></thead>';
+
+      html += "<tbody>";
+      for (let h = 0; h < habits.length; h++) {
+        let yes = 0, no = 0;
+        for (let d = 1; d <= days; d++) {
+          if (data[`${h}_${d}`] === "yes") yes++;
+          if (data[`${h}_${d}`] === "no")  no++;
+        }
+        const pct = days ? Math.round(yes/days*100) : 0;
+        html += `<tr>`;
+        html += `<td class="col-num">${h+1}</td>`;
+        html += `<td class="col-habit"><input class="edit-name" value="${escapeHtml(habits[h])}" aria-label="Habit ${h+1}" onchange="editHabit(${h},this.value)"></td>`;
+        for (let d = 1; d <= days; d++) {
+          const state = data[`${h}_${d}`] || "";
+          const tod   = isToday(d);
+          const icon  = state === "yes" ? "\u2713" : state === "no" ? "\u2717" : "";
+          html += `<td class="${tod ? "today-col" : ""}"><button class="tick ${state}" data-h="${h}" data-d="${d}" onclick="cycle(${h},${d})" title="${state || "Empty"}" aria-pressed="${state==="yes"}"><span class="tick-box">${icon}</span></button></td>`;
+        }
+        html += `<td class="col-total">${yes}/${days}<br><small style="color:var(--text3);font-size:10px">${pct}%</small></td>`;
+        html += `</tr>`;
+      }
+      html += "</tbody>";
+
+      html += "<tfoot><tr>";
+      html += '<th class="col-num"></th>';
+      html += '<th class="col-habit" style="font-size:11px;font-weight:700">DAILY \u2713 YES</th>';
+      for (let d = 1; d <= days; d++) {
+        let c = 0;
+        for (let h = 0; h < habits.length; h++) if (data[`${h}_${d}`] === "yes") c++;
+        const cls = c >= Math.ceil(habits.length*.8) ? "good"
+                  : c >= Math.ceil(habits.length*.5) ? "mid"
+                  : c > 0 ? "bad" : "";
+        html += `<th class="daily-count ${cls}">${c || ""}</th>`;
+      }
+      const totalYes = Object.values(data).filter(v => v === "yes").length;
+      html += `<th class="col-total">${totalYes}</th></tr></tfoot>`;
+
+      document.getElementById("chart").innerHTML = html;
+      updateSummary(data);
+
+      // Scroll today into view
+      const todCell = document.querySelector("th.today-col");
+      if (todCell) setTimeout(() => todCell.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"}), 60);
+    }
+
+    /* â”€â”€ Main render (called on month change) â”€â”€ */
+    function render() {
+      selectedMonth = monthSelect.value;
+      const u = new URL(location.href);
+      u.searchParams.set("month", selectedMonth);
+      history.replaceState({}, "", u);
+      subscribeFirebase();
+      renderFromData(load());
+    }
+
+    /* â”€â”€ Summary (3 cards: YES, NO, %) â”€â”€ */
+    function updateSummary(data) {
+      const vals  = Object.values(data);
+      const yes   = vals.filter(v => v === "yes").length;
+      const no    = vals.filter(v => v === "no").length;
+      const total = habits.length * daysInMonth();
+      const pct   = total ? Math.round(yes/total*100) : 0;
+      document.getElementById("yesCount").textContent     = yes;
+      document.getElementById("noCount").textContent      = no;
+      document.getElementById("percent").textContent      = pct + "%";
+      document.getElementById("bar").style.width          = pct + "%";
+      document.getElementById("progressLabel").textContent = `${yes} / ${total} YES`;
+    }
+
+    /* â”€â”€ Edit habit name â”€â”€ */
+    function editHabit(i, value) {
+      if (value.trim()) { habits[i] = value.trim(); saveHabitNames(); showToast("Habit updated \u2713"); }
+    }
+
+    /* â”€â”€ Reset month â”€â”€ */
+    function resetMonth() {
+      const label = monthSelect.options[monthSelect.selectedIndex].text;
+      if (confirm(label + " ni badhi data delete karvi chhe?\nThis cannot be undone!")) {
+        localStorage.removeItem(storageKey());
+        if (_fbDb) _fbDb.ref("discipline/" + selectedMonth).remove().catch(()=>{});
+        render();
+        showToast("\uD83D\uDDD1 Data cleared");
+      }
+    }
+
+    /* â”€â”€ Share â”€â”€ */
+    async function shareMonth() {
+      const url   = location.href;
+      const label = monthSelect.options[monthSelect.selectedIndex].text;
+      if (navigator.share) {
+        try { await navigator.share({title:"Self Discipline Chart \u2013 "+label, text:"My Self Discipline Chart", url}); return; }
+        catch(e) { if (e.name === "AbortError") return; }
+      }
+      try { await navigator.clipboard.writeText(url); showToast("\uD83D\uDD17 Link copied!"); }
+      catch(e) { prompt("Copy link:", url); }
+    }
+
+    /* â”€â”€ Backup download â”€â”€ */
+    function downloadData() {
+      const all = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith("discipline_") || k === HABIT_NAMES_KEY)) all[k] = localStorage.getItem(k);
+      }
+      const blob = new Blob([JSON.stringify(all, null, 2)], {type:"application/json"});
+      const a    = document.createElement("a");
+      a.href     = URL.createObjectURL(blob);
+      a.download = "discipline-backup-" + new Date().toISOString().slice(0,10) + ".json";
+      a.click(); URL.revokeObjectURL(a.href);
+      showToast("\uD83D\uDCBE Backup downloaded!");
+    }
+
+    /* â”€â”€ Restore backup â”€â”€ */
+    function restoreData(e) {
+      const file = e.target.files[0]; if (!file) return;
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const all = JSON.parse(r.result);
+          let count = 0;
+          Object.entries(all).forEach(([k, v]) => {
+            if (k.startsWith("discipline_") || k === HABIT_NAMES_KEY) {
+              localStorage.setItem(k, v); count++;
+              if (_fbDb && k.startsWith("discipline_")) {
+                const month = k.replace("discipline_","");
+                try { _fbDb.ref("discipline/"+month).set(JSON.parse(v)).catch(()=>{}); } catch(e) {}
+              }
+            }
+          });
+          loadHabitNames(); render();
+          showToast("\u2705 Restored " + count + " entries!");
+        } catch(err) { showToast("\u274C Invalid backup file!"); }
+      };
+      r.readAsText(file);
+      e.target.value = "";
+    }
+
+    /* â”€â”€ Toast â”€â”€ */
+    let _toastTimer;
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.innerHTML = msg; t.classList.add("show");
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+    }
+
+    /* â”€â”€ Utils â”€â”€ */
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    }
+
+    /* â”€â”€ Boot â”€â”€ */
+    loadHabitNames();
+    buildMonthOptions();
+
+    if (_fbDb) {
+      // Load habit names from Firebase on first boot
+      _fbDb.ref("habit_names").once("value").then(snap => {
+        const fbNames = snap.val();
+        if (Array.isArray(fbNames)) {
+          fbNames.forEach((n,i) => { if (n && n.trim() && i < habits.length) habits[i] = n.trim(); });
+          try { localStorage.setItem(HABIT_NAMES_KEY, JSON.stringify(habits)); } catch(e) {}
+        }
+        render();
+      }).catch(() => render());
+    } else {
+      render();
+    }
+  </script>
+</body>
+</html>
