@@ -14,9 +14,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
   <!-- ExcelJS for fully styled Excel export -->
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-  <!-- jsPDF + autoTable for styled PDF export -->
+  <!-- jsPDF + autoTable for PDF structure -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <!-- html2pdf for Gujarati-correct PDF rendering (uses html2canvas internally) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     /* ─── COLOR TOKENS ─── */
     :root, [data-theme="dark"] {
@@ -919,7 +921,7 @@
         if (data[`${h}_${d}`] === "yes") yes++;
       }
       const el = document.getElementById(`total-h-${h}`);
-      if (el) el.innerHTML = `<span class="total-pill">${yes}/${days}</span>`;
+      if (el) el.textContent = `${yes}/${days}`;
     }
 
     /* Live Update: Daily Count Column & Grand Total */
@@ -939,7 +941,7 @@
       const totalEl = document.getElementById("tfoot-total");
       if (totalEl) {
         const totalYes = Object.values(data).filter(v => v === "yes").length;
-        totalEl.innerHTML = `<span class="total-pill grand-total">${totalYes}</span>`;
+        totalEl.textContent = totalYes;
       }
     }
 
@@ -984,8 +986,8 @@
           const icon  = state === "yes" ? "\u2713" : state === "no" ? "\u2717" : "";
           html += `<td class="${tod ? "today-col" : ""}"><button class="tick ${state}" data-h="${h}" data-d="${d}" onclick="cycle(${h},${d})" title="${state || "Empty"}" aria-pressed="${state==="yes"}"><span class="tick-box">${icon}</span></button></td>`;
         }
-        // TOTAL COLUMN (NO PERCENTAGE!)
-        html += `<td class="col-total" id="total-h-${h}"><span class="total-pill">${yes}/${days}</span></td>`;
+        // TOTAL COLUMN - plain live text, no pill wrapper
+        html += `<td class="col-total" id="total-h-${h}">${yes}/${days}</td>`;
         html += `</tr>`;
       }
       html += "</tbody>";
@@ -1003,7 +1005,7 @@
         html += `<th><span class="daily-count ${cls}" id="daily-d-${d}">${c || ""}</span></th>`;
       }
       const totalYes = Object.values(data).filter(v => v === "yes").length;
-      html += `<th class="col-total" id="tfoot-total"><span class="total-pill grand-total">${totalYes}</span></th></tr></tfoot>`;
+      html += `<th class="col-total" id="tfoot-total">${totalYes}</th></tr></tfoot>`;
 
       document.getElementById("chart").innerHTML = html;
       updateSummary(data, false);
@@ -1349,8 +1351,8 @@
     }
 
     /* ══════════════════════════════════════════════════════════════
-       PDF EXPORT — Styled with jsPDF + AutoTable
-       (Works perfectly with Gujarati via UTF-8 substitution)
+       PDF EXPORT — Uses html2pdf (html2canvas) so Gujarati Unicode renders perfectly.
+       The onclone callback makes the hidden capture div visible in the canvas snapshot.
     ══════════════════════════════════════════════════════════════ */
     async function exportPDF() {
       const btn = document.getElementById("btnExportPDF");
@@ -1363,105 +1365,128 @@
       const label = `${MONTHS[m-1]} ${y}`;
 
       try {
-        const { rows, data, days } = await buildExportRows(month);
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+        const { rows, days } = await buildExportRows(month);
 
-        /* ─── Title ─── */
-        doc.setFillColor(30, 64, 175);   // Navy blue
-        doc.rect(0, 0, 297, 14, "F");
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(13);
-        doc.setFont("helvetica", "bold");
-        doc.text(`Self Discipline Chart  —  ${label}`, 6, 10);
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-        doc.text(`${habits.length} Habits  |  ${days} Days  |  Generated: ${new Date().toLocaleDateString()}`, 200, 10);
+        /* Build an off-screen HTML table that includes Gujarati text.
+           We HIDE it using transform/opacity so the page doesn't jump,
+           but use onclone to make it visible just for html2canvas capture. */
+        const captureId = "_pdf_capture_" + Date.now();
+        const reportDiv = document.createElement("div");
+        reportDiv.id = captureId;
+        reportDiv.style.cssText = [
+          "position:fixed",
+          "top:0",
+          "left:0",
+          "width:1150px",
+          "padding:20px 24px",
+          "background:#ffffff",
+          "color:#0f172a",
+          "font-family:'Noto Sans Gujarati','Inter',Arial,sans-serif",
+          "z-index:-9999",
+          "opacity:0",
+          "pointer-events:none"
+        ].join(";");
 
-        /* ─── Build table head & body ─── */
-        // Replace Gujarati with romanized for PDF (jsPDF default fonts are Latin)
-        // Habit names shown as Habit-1, Habit-2... but actual names in habit column
-        const pdfHead = [rows[0]];
-
-        const pdfBody = [];
-        for (let r = 1; r < rows.length - 1; r++) {
-          pdfBody.push(rows[r]);
-        }
-        const pdfFoot = [rows[rows.length - 1]];
-
-        doc.autoTable({
-          head: pdfHead,
-          body: pdfBody,
-          foot: pdfFoot,
-          startY: 16,
-          margin: { left: 4, right: 4 },
-          styles: {
-            fontSize: 7,
-            cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
-            halign: "center",
-            valign: "middle",
-            lineWidth: 0.1,
-            lineColor: [203, 213, 225]
-          },
-          headStyles: {
-            fillColor: [30, 64, 175],
-            textColor: [255, 255, 255],
-            fontStyle: "bold",
-            fontSize: 7.5,
-            halign: "center"
-          },
-          footStyles: {
-            fillColor: [224, 231, 255],
-            textColor: [30, 58, 138],
-            fontStyle: "bold",
-            fontSize: 7.5
-          },
-          columnStyles: {
-            0: { cellWidth: 7,  halign: "center", fontStyle: "bold", textColor: [100, 116, 139] },
-            1: { cellWidth: 36, halign: "left",   fontStyle: "bold" }
-          },
-          alternateRowStyles: {
-            fillColor: [248, 250, 252]
-          },
-          theme: "grid",
-          showFoot: "lastPage",
-          willDrawCell: function(d) {
-            /* Color the last column (TOTAL) amber */
-            if (d.column.index === rows[0].length - 1 && d.section === "body") {
-              d.cell.styles.fillColor  = [254, 243, 199];
-              d.cell.styles.textColor  = [180, 83, 9];
-              d.cell.styles.fontStyle  = "bold";
-            }
-          },
-          didParseCell: function(d) {
-            if (d.section === "body") {
-              if (d.cell.raw === "\u2713") {
-                d.cell.styles.fillColor = [5, 150, 105];    // Green
-                d.cell.styles.textColor = [255, 255, 255];
-                d.cell.styles.fontStyle = "bold";
-                d.cell.styles.fontSize  = 9;
-              } else if (d.cell.raw === "\u2717") {
-                d.cell.styles.fillColor = [220, 38, 38];    // Red
-                d.cell.styles.textColor = [255, 255, 255];
-                d.cell.styles.fontStyle = "bold";
-                d.cell.styles.fontSize  = 9;
-              }
-              /* Grand total footer last cell */
-              if (d.row.index === pdfFoot[0].length - 1 && d.column.index === rows[0].length - 1) {
-                d.cell.styles.fillColor = [245, 158, 11];
-                d.cell.styles.textColor = [0, 0, 0];
-                d.cell.styles.fontStyle = "bold";
-              }
-            }
-          }
+        /* Build styled HTML table */
+        let html = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:3px solid #1e40af;padding-bottom:10px;">
+            <div>
+              <div style="font-size:18px;font-weight:800;color:#1e3a8a;line-height:1.3;">ਸેલ્ફ ડિસીપ્લીન ચાર્ટ &mdash; ${label}</div>
+              <div style="font-size:11px;color:#64748b;margin-top:2px;">Self Discipline Chart &mdash; Daily Habit Tracker</div>
+            </div>
+            <div style="font-size:12px;font-weight:700;color:#1e3a8a;text-align:right;">
+              <div>Habits: ${habits.length} &nbsp;|&nbsp; Days: ${days}</div>
+              <div style="color:#64748b;font-size:10px;margin-top:2px;">Generated: ${new Date().toLocaleDateString("en-IN")}</div>
+            </div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:9.5px;text-align:center;table-layout:fixed;">
+            <colgroup>
+              <col style="width:24px">
+              <col style="width:170px">
+              ${Array.from({length:days},()=>'<col style="width:auto">').join('')}
+              <col style="width:55px">
+            </colgroup>
+            <thead>
+              <tr style="background:#1e40af;color:#fff;">
+        `;
+        rows[0].forEach((col, idx) => {
+          const align = idx === 1 ? "left;padding-left:6px;" : "center;";
+          html += `<th style="border:1px solid #3b5fe8;padding:5px 2px;text-align:${align};font-weight:800;">${col}</th>`;
         });
+        html += `</tr></thead><tbody>`;
 
-        doc.save(`Discipline_${month}.pdf`);
-        showToast("\uD83D\uDCD5 PDF downloaded successfully!");
+        for (let r = 1; r < rows.length - 1; r++) {
+          const rowData = rows[r];
+          const bg = r % 2 === 0 ? "#f8fafc" : "#ffffff";
+          html += `<tr style="background:${bg};">` ;
+          rowData.forEach((val, idx) => {
+            let cellStyle = `border:1px solid #e2e8f0;padding:4px 2px;`;
+            if (idx === 0) {
+              cellStyle += "text-align:center;color:#64748b;font-weight:700;";
+            } else if (idx === 1) {
+              cellStyle += "text-align:left;padding-left:6px;font-weight:600;font-family:'Noto Sans Gujarati','Inter',Arial,sans-serif;";
+            } else if (idx === rowData.length - 1) {
+              cellStyle += "text-align:center;font-weight:800;background:#fef3c7;color:#b45309;";
+            } else if (val === "\u2713") {
+              cellStyle += "text-align:center;background:#059669;color:#fff;font-weight:900;font-size:12px;";
+            } else if (val === "\u2717") {
+              cellStyle += "text-align:center;background:#dc2626;color:#fff;font-weight:900;font-size:12px;";
+            } else {
+              cellStyle += "text-align:center;";
+            }
+            html += `<td style="${cellStyle}">${val}</td>`;
+          });
+          html += `</tr>`;
+        }
+
+        /* Footer / daily totals row */
+        html += `<tr style="background:#dbeafe;font-weight:700;">`;
+        rows[rows.length-1].forEach((val, idx) => {
+          const align = idx === 1 ? "left;padding-left:6px;" : "center;";
+          const extra = idx === rows[0].length - 1
+            ? "background:#f59e0b;color:#000;font-size:11px;" : "color:#1e3a8a;";
+          html += `<td style="border:1.5px solid #6366f1;padding:5px 2px;text-align:${align};${extra}">${val}</td>`;
+        });
+        html += `</tr></tbody></table>`;
+
+        reportDiv.innerHTML = html;
+        document.body.appendChild(reportDiv);
+
+        /* Ensure Gujarati font (Noto Sans Gujarati) is fully loaded before capture */
+        await document.fonts.ready;
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        const opt = {
+          margin:      [4, 4, 4, 4],
+          filename:    `Discipline_${month}.pdf`,
+          image:       { type: "jpeg", quality: 0.98 },
+          html2canvas: {
+            scale: 2.2,
+            useCORS: true,
+            allowTaint: false,
+            logging: false,
+            backgroundColor: "#ffffff",
+            /* onclone: make the hidden div visible in the cloned document
+               so html2canvas captures it correctly with all fonts rendered */
+            onclone: function(clonedDoc) {
+              const el = clonedDoc.getElementById(captureId);
+              if (el) {
+                el.style.opacity = "1";
+                el.style.zIndex  = "1";
+              }
+            }
+          },
+          jsPDF: { unit: "mm", format: "a4", orientation: "landscape" }
+        };
+
+        await html2pdf().set(opt).from(reportDiv).save();
+        document.body.removeChild(reportDiv);
+
+        showToast("\uD83D\uDCD5 PDF downloaded!");
         setTimeout(closeExportModal, 500);
       } catch(e) {
         console.error("PDF export error:", e);
-        showToast("\u274C PDF export failed: " + e.message);
+        showToast("\u274C PDF failed: " + e.message);
       } finally {
         btn.innerHTML = origText;
         btn.disabled = false;
