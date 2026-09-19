@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="gu">
+<html lang="gu" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -13,7 +13,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
   <style>
-    :root {
+    /* ─── DARK THEME (default) ─── */
+    :root,
+    [data-theme="dark"] {
       --brand: #1a56db;
       --brand-glow: rgba(26,86,219,.2);
       --green: #0e9f6e;
@@ -30,10 +32,31 @@
       --text3: #6b7094;
       --radius: 14px;
       --shadow: 0 4px 24px rgba(0,0,0,.4);
+      --header-bg: rgba(26,29,39,.95);
+    }
+    /* ─── LIGHT THEME ─── */
+    [data-theme="light"] {
+      --brand: #1a56db;
+      --brand-glow: rgba(26,86,219,.15);
+      --green: #059669;
+      --red: #dc2626;
+      --yellow: #d97706;
+      --bg: #f0f2f8;
+      --surface: #ffffff;
+      --surface2: #e8edf5;
+      --surface3: #d1d9ea;
+      --border: rgba(0,0,0,.08);
+      --border2: rgba(0,0,0,.14);
+      --text: #1a1d27;
+      --text2: #4a5270;
+      --text3: #7b82a0;
+      --radius: 14px;
+      --shadow: 0 4px 24px rgba(0,0,0,.12);
+      --header-bg: rgba(240,242,248,.95);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
-    body { font-family: 'Inter','Noto Sans Gujarati',Arial,sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; }
+    body { font-family: 'Inter','Noto Sans Gujarati',Arial,sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; transition: background .25s, color .25s; }
     body::before {
       content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
       background-image: linear-gradient(rgba(26,86,219,.03) 1px,transparent 1px), linear-gradient(90deg,rgba(26,86,219,.03) 1px,transparent 1px);
@@ -48,11 +71,23 @@
     /* â”€â”€â”€ HEADER â”€â”€â”€ */
     header {
       position: sticky; top: 0; z-index: 100;
-      background: rgba(26,29,39,.95);
+      background: var(--header-bg);
       backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
       border-bottom: 1px solid var(--border); padding: 14px 16px 12px;
+      transition: background .25s;
     }
-    .header-top { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .header-top { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; position: relative; }
+    /* ─── THEME TOGGLE BUTTON ─── */
+    .theme-toggle {
+      position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+      width: 40px; height: 40px;
+      border: 1px solid var(--border2); border-radius: 12px;
+      background: var(--surface2); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; transition: all .2s; flex-shrink: 0;
+    }
+    .theme-toggle:hover { background: var(--surface3); transform: translateY(-50%) scale(1.1); }
+    .theme-toggle:active { transform: translateY(-50%) scale(.93); }
     .logo-icon {
       width: 38px; height: 38px; flex-shrink: 0;
       background: linear-gradient(135deg,var(--brand),#7c3aed);
@@ -84,7 +119,7 @@
       font-family: inherit; font-size: 14px; font-weight: 600;
       cursor: pointer; outline: none; padding: 4px 6px;
     }
-    select.month-select option { background: #1a1d27; color: var(--text); }
+    select.month-select option { background: var(--surface); color: var(--text); }
     .btn {
       display: inline-flex; align-items: center; gap: 5px; border: 0;
       border-radius: 10px; padding: 8px 13px; font-family: inherit;
@@ -92,12 +127,10 @@
     }
     .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
     .btn:active { transform: translateY(0) scale(.97); }
-    .btn-success { background: linear-gradient(135deg,#059669,#0e9f6e); color: #fff; }
     .btn-danger  { background: linear-gradient(135deg,#dc2626,#e02424); color: #fff; }
     .btn-ghost   { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); }
     .btn-ghost:hover { background: var(--surface3); color: var(--text); }
-    .btn-file-wrap { position: relative; }
-    .btn-file-wrap input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
     /* â”€â”€â”€ SYNC STATUS â”€â”€â”€ */
     #syncStatus {
       font-size: 11px; color: var(--text3); text-align: center; margin-top: 7px;
@@ -156,18 +189,18 @@
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       -webkit-tap-highlight-color: transparent; transition: background .1s;
     }
-    .tick:hover { background: rgba(255,255,255,.04); }
+    .tick:hover { background: rgba(128,128,128,.07); }
     .tick:active { transform: scale(.9); }
     .tick-box {
       width: 24px; height: 24px;
-      border: 2px solid rgba(255,255,255,.18);
+      border: 2px solid var(--border2);
       border-radius: 5px;
       display: flex; align-items: center; justify-content: center;
       font-size: 14px; font-weight: 900; color: transparent;
       transition: all .15s cubic-bezier(.4,0,.2,1);
       user-select: none;
     }
-    .tick:hover .tick-box { border-color: rgba(255,255,255,.38); }
+    .tick:hover .tick-box { border-color: var(--text2); }
     .tick.yes .tick-box {
       background: var(--green); border-color: var(--green); color: #fff;
       box-shadow: 0 0 8px rgba(14,159,110,.38); transform: scale(1.1);
@@ -233,6 +266,8 @@
         <h1>સેલ્ફ ડિસીપ્લીન ચાર્ટ</h1>
         <p class="subtitle">સ્વાસ્થ્ય + નોલેજ + વર્ક + રેકોર્ડ</p>
       </div>
+      <!-- Dark / Light mode toggle -->
+      <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle dark/light mode" title="Toggle Dark / Light Mode">🌙</button>
     </div>
 
     <div class="controls">
@@ -242,12 +277,6 @@
         <button class="btn-nav" id="nextBtn" onclick="changeMonth(1)" aria-label="Next month">&#8250;</button>
       </div>
       <button class="btn btn-ghost" onclick="goToday()" id="todayBtn">&#128197; Today</button>
-      <button class="btn btn-ghost" onclick="shareMonth()" id="shareBtn">&#128279; Share</button>
-      <button class="btn btn-success" onclick="downloadData()" id="backupBtn">&#128190; Backup</button>
-      <span class="btn-file-wrap">
-        <button class="btn btn-ghost" id="restoreBtn">&#128194; Restore</button>
-        <input type="file" accept=".json" onchange="restoreData(event)" aria-label="Restore backup file">
-      </span>
       <button class="btn btn-danger" onclick="resetMonth()" id="resetBtn">&#128465; Reset</button>
     </div>
 
@@ -453,13 +482,47 @@
       const k = `${h}_${d}`;
       data[k] = data[k] === "yes" ? "no" : data[k] === "no" ? "" : "yes";
       if (!data[k]) delete data[k];
-      // Optimistic local update immediately
+      // Optimistic local save
       try { localStorage.setItem(storageKey(), JSON.stringify(data)); } catch(e) {}
+      // Update just the clicked cell
       updateCell(h, d, data[k] || "");
+      // Live-update row total for habit h
+      updateRowTotal(h, data);
+      // Live-update daily column count for day d
+      updateDailyCol(d, data);
+      // Refresh summary cards
       updateSummary(data);
-      // Write to Firebase async (no await)
+      // Write to Firebase async
       if (_fbDb) _fbDb.ref("discipline/" + selectedMonth).set(data).catch(()=>{});
       _isRendering = false;
+    }
+
+    /* Live-update: row total cell for habit h */
+    function updateRowTotal(h, data) {
+      const days = daysInMonth();
+      let yes = 0;
+      for (let d = 1; d <= days; d++) {
+        if (data[`${h}_${d}`] === "yes") yes++;
+      }
+      const pct = days ? Math.round(yes / days * 100) : 0;
+      const el = document.getElementById(`total-h-${h}`);
+      if (el) el.innerHTML = `${yes}/${days}<br><small style="color:var(--text3);font-size:10px">${pct}%</small>`;
+    }
+
+    /* Live-update: daily count for day d in tfoot */
+    function updateDailyCol(d, data) {
+      let c = 0;
+      for (let h = 0; h < habits.length; h++) {
+        if (data[`${h}_${d}`] === "yes") c++;
+      }
+      const cls = c >= Math.ceil(habits.length * .8) ? "good"
+                : c >= Math.ceil(habits.length * .5) ? "mid"
+                : c > 0 ? "bad" : "";
+      const el = document.getElementById(`daily-d-${d}`);
+      if (el) { el.className = `daily-count ${cls}`; el.textContent = c || ""; }
+      // Update tfoot grand total
+      const totalEl = document.getElementById("tfoot-total");
+      if (totalEl) totalEl.textContent = Object.values(data).filter(v => v === "yes").length;
     }
 
     /* â”€â”€ Update single cell (optimistic) â”€â”€ */
@@ -504,7 +567,7 @@
           const icon  = state === "yes" ? "\u2713" : state === "no" ? "\u2717" : "";
           html += `<td class="${tod ? "today-col" : ""}"><button class="tick ${state}" data-h="${h}" data-d="${d}" onclick="cycle(${h},${d})" title="${state || "Empty"}" aria-pressed="${state==="yes"}"><span class="tick-box">${icon}</span></button></td>`;
         }
-        html += `<td class="col-total">${yes}/${days}<br><small style="color:var(--text3);font-size:10px">${pct}%</small></td>`;
+        html += `<td class="col-total" id="total-h-${h}">${yes}/${days}<br><small style="color:var(--text3);font-size:10px">${pct}%</small></td>`;
         html += `</tr>`;
       }
       html += "</tbody>";
@@ -518,10 +581,11 @@
         const cls = c >= Math.ceil(habits.length*.8) ? "good"
                   : c >= Math.ceil(habits.length*.5) ? "mid"
                   : c > 0 ? "bad" : "";
-        html += `<th class="daily-count ${cls}">${c || ""}</th>`;
+        // id for live update: daily-d-{d}
+        html += `<th><span class="daily-count ${cls}" id="daily-d-${d}">${c || ""}</span></th>`;
       }
       const totalYes = Object.values(data).filter(v => v === "yes").length;
-      html += `<th class="col-total">${totalYes}</th></tr></tfoot>`;
+      html += `<th class="col-total" id="tfoot-total">${totalYes}</th></tr></tfoot>`;
 
       document.getElementById("chart").innerHTML = html;
       updateSummary(data);
@@ -572,58 +636,20 @@
     }
 
     /* â”€â”€ Share â”€â”€ */
-    async function shareMonth() {
-      const url   = location.href;
-      const label = monthSelect.options[monthSelect.selectedIndex].text;
-      if (navigator.share) {
-        try { await navigator.share({title:"Self Discipline Chart \u2013 "+label, text:"My Self Discipline Chart", url}); return; }
-        catch(e) { if (e.name === "AbortError") return; }
-      }
-      try { await navigator.clipboard.writeText(url); showToast("\uD83D\uDD17 Link copied!"); }
-      catch(e) { prompt("Copy link:", url); }
+    /* ── Theme toggle ── */
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      const btn = document.getElementById("themeToggleBtn");
+      if (btn) btn.textContent = theme === "dark" ? "🌙" : "☀️";
+      try { localStorage.setItem("discipline_theme", theme); } catch(e) {}
     }
 
-    /* â”€â”€ Backup download â”€â”€ */
-    function downloadData() {
-      const all = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && (k.startsWith("discipline_") || k === HABIT_NAMES_KEY)) all[k] = localStorage.getItem(k);
-      }
-      const blob = new Blob([JSON.stringify(all, null, 2)], {type:"application/json"});
-      const a    = document.createElement("a");
-      a.href     = URL.createObjectURL(blob);
-      a.download = "discipline-backup-" + new Date().toISOString().slice(0,10) + ".json";
-      a.click(); URL.revokeObjectURL(a.href);
-      showToast("\uD83D\uDCBE Backup downloaded!");
+    function toggleTheme() {
+      const cur = document.documentElement.getAttribute("data-theme") || "dark";
+      applyTheme(cur === "dark" ? "light" : "dark");
     }
 
-    /* â”€â”€ Restore backup â”€â”€ */
-    function restoreData(e) {
-      const file = e.target.files[0]; if (!file) return;
-      const r = new FileReader();
-      r.onload = () => {
-        try {
-          const all = JSON.parse(r.result);
-          let count = 0;
-          Object.entries(all).forEach(([k, v]) => {
-            if (k.startsWith("discipline_") || k === HABIT_NAMES_KEY) {
-              localStorage.setItem(k, v); count++;
-              if (_fbDb && k.startsWith("discipline_")) {
-                const month = k.replace("discipline_","");
-                try { _fbDb.ref("discipline/"+month).set(JSON.parse(v)).catch(()=>{}); } catch(e) {}
-              }
-            }
-          });
-          loadHabitNames(); render();
-          showToast("\u2705 Restored " + count + " entries!");
-        } catch(err) { showToast("\u274C Invalid backup file!"); }
-      };
-      r.readAsText(file);
-      e.target.value = "";
-    }
-
-    /* â”€â”€ Toast â”€â”€ */
+    /* ── Toast ── */
     let _toastTimer;
     function showToast(msg) {
       const t = document.getElementById("toast");
@@ -632,12 +658,16 @@
       _toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
     }
 
-    /* â”€â”€ Utils â”€â”€ */
+    /* ── Utils ── */
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     }
 
-    /* â”€â”€ Boot â”€â”€ */
+    /* ── Boot ── */
+    (function() {
+      const savedTheme = localStorage.getItem("discipline_theme") || "dark";
+      applyTheme(savedTheme);
+    })();
     loadHabitNames();
     buildMonthOptions();
 
