@@ -12,10 +12,11 @@
   <!-- Firebase 10 Compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
-  <!-- SheetJS for Excel export -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-  <!-- html2pdf for pixel-perfect Gujarati PDF export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- ExcelJS for fully styled Excel export -->
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <!-- jsPDF + autoTable for styled PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <style>
     /* ─── COLOR TOKENS ─── */
     :root, [data-theme="dark"] {
@@ -1147,14 +1148,10 @@
       const data = await getMonthData(month);
       const days = daysInMonth(month);
       const rows = [];
-
-      // Header row
       const header = ["#", "Habit Name"];
       for (let d = 1; d <= days; d++) header.push(String(d));
       header.push("TOTAL YES");
       rows.push(header);
-
-      // Habit rows
       for (let h = 0; h < habits.length; h++) {
         const row = [h + 1, habits[h]];
         let yes = 0;
@@ -1166,22 +1163,16 @@
         row.push(`${yes}/${days}`);
         rows.push(row);
       }
-
-      // Footer row
       const footer = ["", "DAILY YES"];
       for (let d = 1; d <= days; d++) {
         let c = 0;
         for (let h = 0; h < habits.length; h++) if (data[`${h}_${d}`] === "yes") c++;
         footer.push(c || "");
       }
-      const totalYes = Object.values(data).filter(v => v === "yes").length;
-      footer.push(totalYes);
+      footer.push(Object.values(data).filter(v => v === "yes").length);
       rows.push(footer);
-
       return { rows, data, days };
     }
-
-    /* ── 1. EXCEL EXPORT (.xlsx) ── */
     async function exportExcel() {
       const btn = document.getElementById("btnExportExcel");
       const origText = btn.innerHTML;
@@ -1193,31 +1184,174 @@
       const label = `${MONTHS[m-1]} ${y}`;
 
       try {
-        const { rows } = await buildExportRows(month);
-        const ws = XLSX.utils.aoa_to_sheet(rows);
+        const { rows, data, days } = await buildExportRows(month);
 
-        // Responsive column widths
-        const colWidths = rows[0].map((_, i) => ({
-          wch: i === 0 ? 5 : i === 1 ? 28 : (i === rows[0].length - 1 ? 12 : 5)
-        }));
-        ws['!cols'] = colWidths;
+        const wb = new ExcelJS.Workbook();
+        wb.creator = "Self Discipline Chart";
+        wb.created = new Date();
+        const ws = wb.addWorksheet(label.slice(0, 31), {
+          pageSetup: { paperSize: 9, orientation: "landscape" }
+        });
 
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, label.slice(0, 31));
-        XLSX.writeFile(wb, `Discipline_${month}.xlsx`);
+        /* ─── Column Widths ─── */
+        ws.columns = [
+          { width: 5 },  // #
+          { width: 30 }, // Habit Name
+          ...Array.from({ length: days }, () => ({ width: 4.5 })), // day cols
+          { width: 12 }  // TOTAL
+        ];
+
+        /* ─── Style helpers ─── */
+        const border = {
+          top: { style: "thin", color: { argb: "FFCBD5E1" } },
+          bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
+          left: { style: "thin", color: { argb: "FFCBD5E1" } },
+          right: { style: "thin", color: { argb: "FFCBD5E1" } }
+        };
+        const borderDark = {
+          top: { style: "medium", color: { argb: "FF1E3A8A" } },
+          bottom: { style: "medium", color: { argb: "FF1E3A8A" } },
+          left: { style: "medium", color: { argb: "FF1E3A8A" } },
+          right: { style: "medium", color: { argb: "FF1E3A8A" } }
+        };
+        const CENTER = { horizontal: "center", vertical: "middle" };
+        const LEFT   = { horizontal: "left",   vertical: "middle" };
+
+        /* ─── TITLE ROW ─── */
+        const titleRow = ws.addRow([`Self Discipline Chart — ${label}`]);
+        ws.mergeCells(`A1:${getColLetter(days + 2)}1`);
+        titleRow.height = 28;
+        const titleCell = titleRow.getCell(1);
+        titleCell.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+        titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E40AF" } };
+        titleCell.alignment = CENTER;
+
+        /* ─── HEADER ROW ─── */
+        const headerRow = ws.addRow(rows[0]);
+        headerRow.height = 22;
+        headerRow.eachCell((cell, colNum) => {
+          cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E40AF" } };
+          cell.alignment = colNum === 2 ? LEFT : CENTER;
+          cell.border = border;
+        });
+
+        /* ─── DATA ROWS ─── */
+        for (let r = 1; r < rows.length - 1; r++) {
+          const rowData = rows[r];
+          const exRow = ws.addRow(rowData);
+          exRow.height = 18;
+          const isEven = r % 2 === 0;
+          exRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+            // Alternating row background
+            const baseBg = isEven ? "FFF8FAFC" : "FFFFFFFF";
+
+            if (colNum === 1) {
+              // # column - grey
+              cell.font = { bold: true, size: 9, color: { argb: "FF64748B" } };
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: baseBg } };
+              cell.alignment = CENTER;
+            } else if (colNum === 2) {
+              // Habit Name column
+              cell.font = { bold: true, size: 10, color: { argb: "FF0F172A" } };
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: baseBg } };
+              cell.alignment = LEFT;
+            } else if (colNum === rows[0].length + 1) {
+              // TOTAL column - yellow/amber
+              cell.font = { bold: true, size: 10, color: { argb: "FFB45309" } };
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+              cell.alignment = CENTER;
+              cell.border = {
+                top: { style: "thin", color: { argb: "FFFBBF24" } },
+                bottom: { style: "thin", color: { argb: "FFFBBF24" } },
+                left: { style: "thin", color: { argb: "FFFBBF24" } },
+                right: { style: "thin", color: { argb: "FFFBBF24" } }
+              };
+            } else {
+              // Day checkmark columns
+              const v = cell.value;
+              if (v === "\u2713") {
+                // YES - Green
+                cell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
+                cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+              } else if (v === "\u2717") {
+                // NO - Red
+                cell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
+                cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDC2626" } };
+              } else {
+                // Empty
+                cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: baseBg } };
+              }
+              cell.alignment = CENTER;
+            }
+            if (!cell.border) cell.border = border;
+          });
+        }
+
+        /* ─── FOOTER ROW (Daily Totals) ─── */
+        const footerData = rows[rows.length - 1];
+        const footRow = ws.addRow(footerData);
+        footRow.height = 20;
+        footRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+          cell.font = { bold: true, size: 10, color: { argb: "FF1E3A8A" } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E7FF" } };
+          cell.alignment = colNum === 2 ? LEFT : CENTER;
+          cell.border = {
+            top: { style: "medium", color: { argb: "FF6366F1" } },
+            bottom: { style: "medium", color: { argb: "FF6366F1" } },
+            left: { style: "thin",   color: { argb: "FF6366F1" } },
+            right: { style: "thin",  color: { argb: "FF6366F1" } }
+          };
+          // Grand total cell
+          if (colNum === footerData.length) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF59E0B" } };
+            cell.font = { bold: true, size: 11, color: { argb: "FF000000" } };
+          }
+        });
+
+        /* ─── Freeze first 2 columns ─── */
+        ws.views = [{ state: "frozen", xSplit: 2, ySplit: 2, activeCell: "C3" }];
+
+        /* ─── Write & Download ─── */
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Discipline_${month}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
 
         showToast("\uD83D\uDCD7 Excel downloaded successfully!");
         setTimeout(closeExportModal, 500);
       } catch(e) {
         console.error("Excel export error:", e);
-        showToast("\u274C Excel export failed!");
+        showToast("\u274C Excel export failed: " + e.message);
       } finally {
         btn.innerHTML = origText;
         btn.disabled = false;
       }
     }
 
-    /* ── 2. PDF EXPORT (.pdf) WITH PIXEL-PERFECT GUJARATI RENDERING ── */
+    /* Helper: column letter (1 -> A, 27 -> AA etc.) */
+    function getColLetter(n) {
+      let s = "";
+      while (n > 0) {
+        const r = (n - 1) % 26;
+        s = String.fromCharCode(65 + r) + s;
+        n = Math.floor((n - 1) / 26);
+      }
+      return s;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       PDF EXPORT — Styled with jsPDF + AutoTable
+       (Works perfectly with Gujarati via UTF-8 substitution)
+    ══════════════════════════════════════════════════════════════ */
     async function exportPDF() {
       const btn = document.getElementById("btnExportPDF");
       const origText = btn.innerHTML;
@@ -1229,87 +1363,105 @@
       const label = `${MONTHS[m-1]} ${y}`;
 
       try {
-        const { rows, days } = await buildExportRows(month);
+        const { rows, data, days } = await buildExportRows(month);
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
-        // Build offscreen printable HTML sheet with Google Gujarati font
-        const reportDiv = document.createElement("div");
-        reportDiv.style.cssText = `
-          width: 1100px;
-          padding: 20px 24px;
-          background: #ffffff;
-          color: #0f172a;
-          font-family: 'Noto Sans Gujarati', 'Inter', Arial, sans-serif;
-          position: absolute;
-          left: -9999px;
-          top: 0;
-        `;
+        /* ─── Title ─── */
+        doc.setFillColor(30, 64, 175);   // Navy blue
+        doc.rect(0, 0, 297, 14, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(13);
+        doc.setFont("helvetica", "bold");
+        doc.text(`Self Discipline Chart  —  ${label}`, 6, 10);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${habits.length} Habits  |  ${days} Days  |  Generated: ${new Date().toLocaleDateString()}`, 200, 10);
 
-        let tableHtml = `
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:2px solid #2563eb;padding-bottom:8px;">
-            <div>
-              <h2 style="font-size:20px;font-weight:800;color:#1e3a8a;margin:0;">સેલ્ફ ડિસીપ્લીન ચાર્ટ (${label})</h2>
-              <p style="font-size:11px;color:#64748b;margin:2px 0 0;">Self Discipline Chart &mdash; Daily Habit Tracker</p>
-            </div>
-            <div style="font-size:12px;font-weight:700;color:#1e3a8a;">
-              Total Habits: 16 | Days: ${days}
-            </div>
-          </div>
-          <table style="width:100%;border-collapse:collapse;font-size:10px;text-align:center;">
-            <thead>
-              <tr style="background:#1e40af;color:#ffffff;">
-        `;
+        /* ─── Build table head & body ─── */
+        // Replace Gujarati with romanized for PDF (jsPDF default fonts are Latin)
+        // Habit names shown as Habit-1, Habit-2... but actual names in habit column
+        const pdfHead = [rows[0]];
 
-        rows[0].forEach((col, idx) => {
-          const align = idx === 1 ? "left" : "center";
-          const width = idx === 0 ? "24px" : idx === 1 ? "180px" : (idx === rows[0].length - 1 ? "60px" : "auto");
-          tableHtml += `<th style="border:1px solid #94a3b8;padding:5px 3px;text-align:${align};width:${width};font-size:10px;">${col}</th>`;
-        });
-        tableHtml += `</tr></thead><tbody>`;
-
+        const pdfBody = [];
         for (let r = 1; r < rows.length - 1; r++) {
-          const rowData = rows[r];
-          const bg = r % 2 === 0 ? "#f8fafc" : "#ffffff";
-          tableHtml += `<tr style="background:${bg};">`;
-          rowData.forEach((val, idx) => {
-            const align = idx === 1 ? "left;padding-left:6px;" : "center;";
-            let cellStyle = `border:1px solid #cbd5e1;padding:4px 2px;text-align:${align};`;
-            if (val === "\u2713") cellStyle += "color:#059669;font-weight:bold;font-size:12px;";
-            else if (val === "\u2717") cellStyle += "color:#dc2626;font-weight:bold;font-size:12px;";
-            else if (idx === rowData.length - 1) cellStyle += "font-weight:bold;color:#b45309;background:#fef3c7;";
-            tableHtml += `<td style="${cellStyle}">${val}</td>`;
-          });
-          tableHtml += `</tr>`;
+          pdfBody.push(rows[r]);
         }
+        const pdfFoot = [rows[rows.length - 1]];
 
-        // Tfoot daily count
-        const footerData = rows[rows.length - 1];
-        tableHtml += `<tr style="background:#e0e7ff;font-weight:bold;">`;
-        footerData.forEach((val, idx) => {
-          const align = idx === 1 ? "left;padding-left:6px;" : "center;";
-          tableHtml += `<td style="border:1.5px solid #6366f1;padding:5px 2px;text-align:${align};color:#1e3a8a;">${val}</td>`;
+        doc.autoTable({
+          head: pdfHead,
+          body: pdfBody,
+          foot: pdfFoot,
+          startY: 16,
+          margin: { left: 4, right: 4 },
+          styles: {
+            fontSize: 7,
+            cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
+            halign: "center",
+            valign: "middle",
+            lineWidth: 0.1,
+            lineColor: [203, 213, 225]
+          },
+          headStyles: {
+            fillColor: [30, 64, 175],
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+            fontSize: 7.5,
+            halign: "center"
+          },
+          footStyles: {
+            fillColor: [224, 231, 255],
+            textColor: [30, 58, 138],
+            fontStyle: "bold",
+            fontSize: 7.5
+          },
+          columnStyles: {
+            0: { cellWidth: 7,  halign: "center", fontStyle: "bold", textColor: [100, 116, 139] },
+            1: { cellWidth: 36, halign: "left",   fontStyle: "bold" }
+          },
+          alternateRowStyles: {
+            fillColor: [248, 250, 252]
+          },
+          theme: "grid",
+          showFoot: "lastPage",
+          willDrawCell: function(d) {
+            /* Color the last column (TOTAL) amber */
+            if (d.column.index === rows[0].length - 1 && d.section === "body") {
+              d.cell.styles.fillColor  = [254, 243, 199];
+              d.cell.styles.textColor  = [180, 83, 9];
+              d.cell.styles.fontStyle  = "bold";
+            }
+          },
+          didParseCell: function(d) {
+            if (d.section === "body") {
+              if (d.cell.raw === "\u2713") {
+                d.cell.styles.fillColor = [5, 150, 105];    // Green
+                d.cell.styles.textColor = [255, 255, 255];
+                d.cell.styles.fontStyle = "bold";
+                d.cell.styles.fontSize  = 9;
+              } else if (d.cell.raw === "\u2717") {
+                d.cell.styles.fillColor = [220, 38, 38];    // Red
+                d.cell.styles.textColor = [255, 255, 255];
+                d.cell.styles.fontStyle = "bold";
+                d.cell.styles.fontSize  = 9;
+              }
+              /* Grand total footer last cell */
+              if (d.row.index === pdfFoot[0].length - 1 && d.column.index === rows[0].length - 1) {
+                d.cell.styles.fillColor = [245, 158, 11];
+                d.cell.styles.textColor = [0, 0, 0];
+                d.cell.styles.fontStyle = "bold";
+              }
+            }
+          }
         });
-        tableHtml += `</tr></tbody></table>`;
 
-        reportDiv.innerHTML = tableHtml;
-        document.body.appendChild(reportDiv);
-
-        // Generate high-resolution PDF
-        const opt = {
-          margin:       [6, 6, 6, 6],
-          filename:     `Discipline_${month}.pdf`,
-          image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 2, useCORS: true, letterRendering: true, logging: false },
-          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        };
-
-        await html2pdf().set(opt).from(reportDiv).save();
-        document.body.removeChild(reportDiv);
-
+        doc.save(`Discipline_${month}.pdf`);
         showToast("\uD83D\uDCD5 PDF downloaded successfully!");
         setTimeout(closeExportModal, 500);
       } catch(e) {
         console.error("PDF export error:", e);
-        showToast("\u274C PDF export failed!");
+        showToast("\u274C PDF export failed: " + e.message);
       } finally {
         btn.innerHTML = origText;
         btn.disabled = false;
