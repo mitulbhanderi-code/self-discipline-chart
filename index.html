@@ -3,280 +3,619 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1a237e">
-  <meta name="description" content="Self Discipline Chart - Daily Habit Tracker">
-  <title>Self Discipline Chart</title>
+  <meta name="theme-color" content="#0b0d14">
+  <meta name="description" content="Self Discipline Chart - Daily Habit Tracker with Cloud Sync">
+  <title>સેલ્ફ ડિસીપ્લીન ચાર્ટ | Self Discipline Chart</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Gujarati:wght@400;600;700&display=swap" rel="stylesheet">
-  <!-- Firebase 10 Compat SDK (CDN - no install needed) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Gujarati:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Firebase 10 Compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
+  <!-- SheetJS for Excel export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <!-- html2pdf for pixel-perfect Gujarati PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
-    /* ─── DARK THEME (default) ─── */
-    :root,
-    [data-theme="dark"] {
-      --brand: #1a56db;
-      --brand-glow: rgba(26,86,219,.2);
-      --green: #0e9f6e;
-      --red: #e02424;
+    /* ─── COLOR TOKENS ─── */
+    :root, [data-theme="dark"] {
+      --brand: #3b82f6;
+      --brand-glow: rgba(59, 130, 246, 0.3);
+      --green: #10b981;
+      --green-glow: rgba(16, 185, 129, 0.35);
+      --red: #ef4444;
+      --red-glow: rgba(239, 68, 68, 0.35);
       --yellow: #f59e0b;
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #22263a;
-      --surface3: #2a2f47;
-      --border: rgba(255,255,255,.08);
-      --border2: rgba(255,255,255,.14);
-      --text: #e8eaf6;
-      --text2: #9399b2;
-      --text3: #6b7094;
+      --yellow-glow: rgba(245, 158, 11, 0.3);
+      --bg: #0b0d14;
+      --surface: #141722;
+      --surface2: #1e2336;
+      --surface3: #29314c;
+      --border: rgba(255, 255, 255, 0.08);
+      --border2: rgba(255, 255, 255, 0.15);
+      --text: #f1f5f9;
+      --text2: #94a3b8;
+      --text3: #64748b;
       --radius: 14px;
-      --shadow: 0 4px 24px rgba(0,0,0,.4);
-      --header-bg: rgba(26,29,39,.95);
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      --header-bg: rgba(11, 13, 20, 0.94);
+      --sticky-bg: #141722;
+      --sticky-head: #1e2336;
+      --today-bg: rgba(59, 130, 246, 0.14);
+      --today-head: rgba(59, 130, 246, 0.3);
     }
-    /* ─── LIGHT THEME ─── */
+
     [data-theme="light"] {
-      --brand: #1a56db;
-      --brand-glow: rgba(26,86,219,.15);
+      --brand: #2563eb;
+      --brand-glow: rgba(37, 99, 235, 0.15);
       --green: #059669;
+      --green-glow: rgba(5, 150, 105, 0.25);
       --red: #dc2626;
+      --red-glow: rgba(220, 38, 38, 0.25);
       --yellow: #d97706;
-      --bg: #f0f2f8;
+      --yellow-glow: rgba(217, 119, 6, 0.25);
+      --bg: #f1f4f9;
       --surface: #ffffff;
-      --surface2: #e8edf5;
-      --surface3: #d1d9ea;
-      --border: rgba(0,0,0,.08);
-      --border2: rgba(0,0,0,.14);
-      --text: #1a1d27;
-      --text2: #4a5270;
-      --text3: #7b82a0;
+      --surface2: #e8ecf4;
+      --surface3: #d9e1ee;
+      --border: rgba(0, 0, 0, 0.08);
+      --border2: rgba(0, 0, 0, 0.14);
+      --text: #0f172a;
+      --text2: #475569;
+      --text3: #64748b;
       --radius: 14px;
-      --shadow: 0 4px 24px rgba(0,0,0,.12);
-      --header-bg: rgba(240,242,248,.95);
+      --shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+      --header-bg: rgba(241, 244, 249, 0.94);
+      --sticky-bg: #ffffff;
+      --sticky-head: #e8ecf4;
+      --today-bg: rgba(37, 99, 235, 0.09);
+      --today-head: rgba(37, 99, 235, 0.2);
     }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
-    body { font-family: 'Inter','Noto Sans Gujarati',Arial,sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; transition: background .25s, color .25s; }
-    body::before {
-      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background-image: linear-gradient(rgba(26,86,219,.03) 1px,transparent 1px), linear-gradient(90deg,rgba(26,86,219,.03) 1px,transparent 1px);
-      background-size: 32px 32px;
+    body {
+      font-family: 'Inter', 'Noto Sans Gujarati', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      transition: background 0.25s, color 0.25s;
+      overflow-x: hidden;
     }
-    /* â”€â”€â”€ FIREBASE BANNER â”€â”€â”€ */
-    #fbBanner {
-      display: none; padding: 10px 16px; font-size: 12px; font-weight: 600; text-align: center;
-      background: rgba(245,158,11,.12); border-bottom: 1px solid rgba(245,158,11,.3); color: var(--yellow);
-      line-height: 1.6;
-    }
-    /* â”€â”€â”€ HEADER â”€â”€â”€ */
+
+    /* ─── HEADER ─── */
     header {
       position: sticky; top: 0; z-index: 100;
       background: var(--header-bg);
       backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-      border-bottom: 1px solid var(--border); padding: 14px 16px 12px;
-      transition: background .25s;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px 12px;
+      transition: background 0.25s;
     }
-    .header-top { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; position: relative; }
-    /* ─── THEME TOGGLE BUTTON ─── */
+    .header-top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; max-width: 1200px; margin: 0 auto;
+    }
+    .title-group {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo-icon {
+      width: 40px; height: 40px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--brand), #8b5cf6);
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; box-shadow: 0 4px 16px var(--brand-glow);
+    }
+    h1 {
+      font-size: clamp(16px, 3.8vw, 22px); font-weight: 800; letter-spacing: -0.3px; line-height: 1.2;
+      background: linear-gradient(135deg, #f1f5f9, #93c5fd);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    [data-theme="light"] h1 {
+      background: linear-gradient(135deg, #0f172a, #1d4ed8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .subtitle { font-size: 11px; color: var(--text3); font-weight: 500; }
+
+    /* Theme Toggle */
     .theme-toggle {
-      position: absolute; right: 0; top: 50%; transform: translateY(-50%);
-      width: 40px; height: 40px;
+      width: 38px; height: 38px;
       border: 1px solid var(--border2); border-radius: 12px;
       background: var(--surface2); cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px; transition: all .2s; flex-shrink: 0;
+      font-size: 18px; transition: all 0.2s; flex-shrink: 0;
     }
-    .theme-toggle:hover { background: var(--surface3); transform: translateY(-50%) scale(1.1); }
-    .theme-toggle:active { transform: translateY(-50%) scale(.93); }
-    .logo-icon {
-      width: 38px; height: 38px; flex-shrink: 0;
-      background: linear-gradient(135deg,var(--brand),#7c3aed);
-      border-radius: 10px; display: flex; align-items: center; justify-content: center;
-      font-size: 20px; box-shadow: 0 0 16px var(--brand-glow);
+    .theme-toggle:hover { background: var(--surface3); transform: scale(1.08); }
+    .theme-toggle:active { transform: scale(0.92); }
+
+    /* ─── CONTROLS ─── */
+    .controls {
+      display: flex; gap: 8px; justify-content: center; align-items: center;
+      flex-wrap: wrap; margin-top: 10px; max-width: 1200px; margin-left: auto; margin-right: auto;
     }
-    h1 {
-      font-size: clamp(17px,4vw,22px); font-weight: 800; letter-spacing: -.3px;
-      background: linear-gradient(135deg,#e0e7ff,#a5b4fc);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .subtitle { text-align: center; font-size: 11px; color: var(--text3); margin-top: 2px; }
-    /* â”€â”€â”€ CONTROLS â”€â”€â”€ */
-    .controls { display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 12px; }
     .month-nav {
-      display: flex; align-items: center; gap: 6px;
-      background: var(--surface2); border: 1px solid var(--border2); border-radius: 12px; padding: 5px 8px;
+      display: flex; align-items: center; gap: 4px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 12px; padding: 4px 6px;
     }
     .btn-nav {
-      width: 32px; height: 32px; border: 0; border-radius: 8px;
-      background: var(--surface3); color: var(--text); font-size: 18px;
+      width: 30px; height: 30px; border: 0; border-radius: 8px;
+      background: var(--surface3); color: var(--text); font-size: 18px; font-weight: 700;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: background .18s, transform .12s;
+      transition: background 0.15s, transform 0.1s;
     }
-    .btn-nav:hover { background: var(--brand); transform: scale(1.07); }
-    .btn-nav:active { transform: scale(.95); }
+    .btn-nav:hover { background: var(--brand); color: #fff; }
+    .btn-nav:active { transform: scale(0.92); }
     select.month-select {
       border: 0; background: transparent; color: var(--text);
-      font-family: inherit; font-size: 14px; font-weight: 600;
-      cursor: pointer; outline: none; padding: 4px 6px;
+      font-family: inherit; font-size: 13px; font-weight: 700;
+      cursor: pointer; outline: none; padding: 4px 8px; text-align: center;
     }
     select.month-select option { background: var(--surface); color: var(--text); }
+
     .btn {
-      display: inline-flex; align-items: center; gap: 5px; border: 0;
-      border-radius: 10px; padding: 8px 13px; font-family: inherit;
-      font-size: 13px; font-weight: 600; cursor: pointer; transition: all .18s; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 6px; border: 0;
+      border-radius: 10px; padding: 7px 12px; font-family: inherit;
+      font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.18s;
+      white-space: nowrap; -webkit-tap-highlight-color: transparent;
     }
     .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
-    .btn:active { transform: translateY(0) scale(.97); }
-    .btn-danger  { background: linear-gradient(135deg,#dc2626,#e02424); color: #fff; }
-    .btn-ghost   { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); }
-    .btn-ghost:hover { background: var(--surface3); color: var(--text); }
+    .btn:active { transform: translateY(0) scale(0.96); }
+    .btn-today { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+    .btn-today:hover { background: var(--surface3); border-color: var(--brand); }
+    .btn-export {
+      background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff;
+      box-shadow: 0 2px 10px rgba(124, 58, 237, 0.35);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff;
+    }
 
-    /* â”€â”€â”€ SYNC STATUS â”€â”€â”€ */
+    /* ─── SYNC STATUS ─── */
     #syncStatus {
-      font-size: 11px; color: var(--text3); text-align: center; margin-top: 7px;
-      display: flex; align-items: center; justify-content: center; gap: 5px;
+      font-size: 11px; color: var(--text3); text-align: center; margin-top: 6px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); display: inline-block; transition: background .3s; }
-    .sync-dot.ok  { background: var(--green); box-shadow: 0 0 6px rgba(14,159,110,.5); }
-    .sync-dot.err { background: var(--red); }
-    /* â”€â”€â”€ SUMMARY (3 cards only) â”€â”€â”€ */
-    .summary { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
-    .card {
+    .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); display: inline-block; transition: all 0.3s; }
+    .sync-dot.ok { background: var(--green); box-shadow: 0 0 8px var(--green-glow); }
+    .sync-dot.err { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
+
+    /* ─── SUMMARY DASHBOARD (YES, PROGRESS CIRCLE, NO) ─── */
+    .summary-area {
+      display: flex; gap: 10px; justify-content: center; align-items: center;
+      margin-top: 10px; max-width: 520px; margin-left: auto; margin-right: auto;
+    }
+    .card-stat {
+      flex: 1; min-width: 80px; max-width: 120px;
       background: var(--surface); border: 1px solid var(--border2);
-      border-radius: 12px; padding: 8px 20px; text-align: center; min-width: 90px;
-      transition: transform .18s, box-shadow .18s;
+      border-radius: 14px; padding: 8px 12px; text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: var(--shadow);
     }
-    .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
-    .card b {
-      display: block; font-size: 22px; font-weight: 800;
-      background: linear-gradient(135deg,#a5b4fc,var(--brand));
+    .card-stat:hover { transform: translateY(-2px); }
+    .card-stat.yes-stat { border-left: 4px solid var(--green); }
+    .card-stat.no-stat  { border-right: 4px solid var(--red); }
+    .card-stat b {
+      display: block; font-size: 22px; font-weight: 900; line-height: 1.1;
+    }
+    .card-stat.yes-stat b { color: var(--green); }
+    .card-stat.no-stat b  { color: var(--red); }
+    .card-stat span {
+      font-size: 10px; font-weight: 700; color: var(--text3);
+      letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px; display: block;
+    }
+
+    /* ─── NEXT-LEVEL CIRCULAR PROGRESS GAUGE ─── */
+    .circle-progress-wrap {
+      position: relative; width: 94px; height: 94px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      filter: drop-shadow(0 4px 16px var(--brand-glow));
+    }
+    .circle-progress-svg {
+      width: 94px; height: 94px; transform: rotate(-90deg);
+    }
+    .circle-bg {
+      fill: none; stroke: var(--surface3); stroke-width: 7.5;
+    }
+    .circle-fill {
+      fill: none;
+      stroke: url(#circleGrad);
+      stroke-width: 7.5;
+      stroke-linecap: round;
+      stroke-dasharray: 251.3;
+      stroke-dashoffset: 251.3;
+      transition: stroke-dashoffset 0.85s cubic-bezier(0.34, 1.56, 0.64, 1);
+      filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.45));
+    }
+    .circle-pulse-indicator {
+      position: absolute; inset: 0; border-radius: 50%;
+      pointer-events: none; opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .circle-pulse-indicator.pulsing {
+      animation: circlePulse 0.6s ease-out;
+    }
+    @keyframes circlePulse {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); opacity: 1; }
+      100% { box-shadow: 0 0 0 16px rgba(16, 185, 129, 0); opacity: 0; }
+    }
+    .circle-content {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .circle-pct {
+      font-size: 20px; font-weight: 900; line-height: 1;
+      background: linear-gradient(135deg, #38bdf8, #34d399);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    .card span { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: .5px; text-transform: uppercase; }
-    /* â”€â”€â”€ PROGRESS â”€â”€â”€ */
-    .progress-wrap { margin: 10px 2px 0; }
-    .progress-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); margin-bottom: 4px; }
-    .progress { height: 8px; background: var(--surface3); border-radius: 20px; overflow: hidden; }
-    .progress > div { height: 100%; width: 0; background: linear-gradient(90deg,var(--brand),var(--green)); border-radius: 20px; transition: width .4s cubic-bezier(.4,0,.2,1); }
-    /* â”€â”€â”€ TABLE AREA â”€â”€â”€ */
-    .wrap { padding: 16px 12px; position: relative; z-index: 1; }
-    .table-container {
-      background: var(--surface); border: 1px solid var(--border2);
-      border-radius: var(--radius); overflow: auto; box-shadow: var(--shadow);
-      scrollbar-width: thin; scrollbar-color: var(--surface3) transparent;
+    [data-theme="light"] .circle-pct {
+      background: linear-gradient(135deg, #0284c7, #059669);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    .table-container::-webkit-scrollbar { height: 6px; width: 6px; }
-    .table-container::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 10px; }
-    table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
-    th, td { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); height: 44px; text-align: center; font-size: 12px; }
+    .circle-label {
+      font-size: 8px; font-weight: 800; color: var(--text3);
+      text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px;
+    }
+    .circle-sub {
+      font-size: 9px; font-weight: 600; color: var(--text2); margin-top: 1px;
+    }
+
+    /* ─── SCROLL HINT ─── */
+    .scroll-hint {
+      text-align: center; font-size: 11px; font-weight: 600; color: var(--brand);
+      padding: 6px 12px; margin: 8px auto 4px; max-width: 320px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      background: rgba(37, 99, 235, 0.08); border-radius: 20px;
+      animation: hintGlow 2.5s infinite ease-in-out;
+    }
+    @keyframes hintGlow {
+      0%, 100% { opacity: 0.8; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.02); }
+    }
+
+    /* ─── TABLE CONTAINER & LAYOUT ─── */
+    .wrap {
+      padding: 10px 10px 30px; position: relative; z-index: 1;
+      max-width: 1400px; margin: 0 auto;
+    }
+    .table-container {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: calc(100vh - 240px);
+      box-shadow: var(--shadow);
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+      scrollbar-color: var(--brand) var(--surface2);
+    }
+    /* HIGH-VISIBILITY BOTTOM SCROLLBAR */
+    .table-container::-webkit-scrollbar {
+      height: 10px; width: 8px;
+    }
+    .table-container::-webkit-scrollbar-track {
+      background: var(--surface2); border-radius: 6px;
+    }
+    .table-container::-webkit-scrollbar-thumb {
+      background: linear-gradient(90deg, var(--brand), #8b5cf6);
+      border-radius: 6px;
+    }
+
+    table {
+      border-collapse: separate; border-spacing: 0;
+      width: max-content; min-width: 100%;
+    }
+    th, td {
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      height: 44px; text-align: center; font-size: 12px;
+    }
     th:last-child, td:last-child { border-right: 0; }
-    thead th { background: var(--surface2); color: var(--text2); font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; position: sticky; top: 0; z-index: 5; }
-    .col-num { width: 40px; min-width: 40px; font-weight: 700; position: sticky; left: 0; z-index: 6; }
-    thead .col-num { z-index: 12; }
-    tbody .col-num { background: var(--surface); }
-    .col-habit { width: 205px; min-width: 180px; text-align: left; padding: 4px 10px; position: sticky; left: 40px; z-index: 6; }
-    thead .col-habit { z-index: 12; background: var(--surface2); }
-    tbody .col-habit { background: var(--surface); }
-    .col-day { width: 38px; min-width: 38px; font-weight: 600; color: var(--text3); }
-    .col-total { width: 78px; min-width: 78px; font-weight: 700; position: sticky; right: 0; z-index: 6; }
-    thead .col-total { z-index: 12; background: rgba(245,158,11,.12); color: var(--yellow); }
-    tbody .col-total { background: rgba(245,158,11,.05); color: var(--yellow); }
-    td.today-col { background: rgba(26,86,219,.06); }
-    thead th.today-col { background: rgba(26,86,219,.18); color: #a5b4fc; font-weight: 800; }
-    /* â”€â”€â”€ CHECKBOX TICK BUTTON â”€â”€â”€ */
+
+    /* Thead sticky top */
+    thead th {
+      background: var(--surface2); color: var(--text2);
+      font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;
+      position: sticky; top: 0; z-index: 15;
+    }
+
+    /* Tfoot sticky bottom */
+    tfoot th {
+      background: var(--surface2); color: var(--text2);
+      font-size: 11px; font-weight: 700;
+      position: sticky; bottom: 0; z-index: 15;
+    }
+
+    /* ─── STICKY COLUMNS: # and HABIT NAME PINNED ON LEFT ─── */
+    .col-num {
+      width: 28px; min-width: 28px; font-weight: 700; color: var(--text3);
+      position: sticky; left: 0; z-index: 8; background: var(--sticky-bg);
+      border-right: 1px solid var(--border);
+    }
+    thead .col-num, tfoot .col-num {
+      z-index: 25; background: var(--sticky-head);
+    }
+
+    .col-habit {
+      width: 160px; min-width: 140px; text-align: left; padding: 2px 8px;
+      position: sticky; left: 28px; z-index: 8; background: var(--sticky-bg);
+      box-shadow: 2px 0 6px rgba(0, 0, 0, 0.15);
+      border-right: 1.5px solid var(--border2);
+    }
+    thead .col-habit, tfoot .col-habit {
+      z-index: 25; background: var(--sticky-head);
+    }
+    tbody tr:hover td.col-habit, tbody tr:hover td.col-num {
+      background: var(--surface2);
+    }
+
+    /* Scrollable Habit Name container inside cell so long names never get cut off */
+    .habit-scroll-box {
+      width: 100%; overflow-x: auto; overflow-y: hidden;
+      scrollbar-width: thin; -webkit-overflow-scrolling: touch;
+      display: flex; align-items: center;
+    }
+    .habit-scroll-box::-webkit-scrollbar { height: 3px; }
+    .habit-scroll-box::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+
+    .edit-name {
+      border: 0; background: transparent; color: var(--text);
+      font-family: inherit; font-size: 12px; font-weight: 600; padding: 5px 2px; outline: none;
+      border-bottom: 1px dashed transparent; transition: all 0.18s;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .edit-name:hover { border-bottom-color: var(--border2); }
+    .edit-name:focus {
+      border-bottom-color: var(--brand); background: var(--surface2);
+      border-radius: 4px; padding-left: 4px;
+    }
+
+    /* ─── DAY CHECKBOX COLUMNS ─── */
+    .col-day {
+      width: 38px; min-width: 38px; font-weight: 600; color: var(--text3);
+    }
+
+    /* ─── TOTAL COLUMN: NEVER STICKY! SITS PROPERLY AT THE END WITHOUT OVERLAPPING ─── */
+    .col-total {
+      width: 72px; min-width: 72px; font-weight: 800; font-size: 12px;
+      background: rgba(245, 158, 11, 0.05); color: var(--yellow);
+      position: static; /* Never sticky! Never overlaps checkboxes */
+    }
+    thead .col-total {
+      background: rgba(245, 158, 11, 0.14); color: var(--yellow); font-weight: 800;
+    }
+    tfoot .col-total {
+      background: rgba(245, 158, 11, 0.18); color: var(--yellow); font-weight: 900;
+    }
+
+    /* Total pill badge (Clean format, NO percentage!) */
+    .total-pill {
+      display: inline-block; padding: 3px 7px;
+      border-radius: 8px; font-size: 12px; font-weight: 800;
+      background: rgba(245, 158, 11, 0.12); color: var(--yellow);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+    .total-pill.grand-total {
+      background: var(--yellow); color: #000; font-weight: 900; font-size: 13px;
+    }
+
+    /* Today highlighting */
+    td.today-col { background: var(--today-bg); }
+    thead th.today-col {
+      background: var(--today-head); color: #60a5fa; font-weight: 800;
+      border-bottom: 2px solid var(--brand);
+    }
+
+    /* ─── CHECKBOX TICK BUTTON ─── */
     .tick {
       width: 100%; height: 43px; border: 0; background: transparent;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      -webkit-tap-highlight-color: transparent; transition: background .1s;
+      -webkit-tap-highlight-color: transparent; transition: background 0.1s;
     }
-    .tick:hover { background: rgba(128,128,128,.07); }
-    .tick:active { transform: scale(.9); }
+    .tick:hover { background: rgba(128, 128, 128, 0.08); }
+    .tick:active { transform: scale(0.9); }
     .tick-box {
-      width: 24px; height: 24px;
+      width: 25px; height: 25px;
       border: 2px solid var(--border2);
-      border-radius: 5px;
+      border-radius: 6px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 900; color: transparent;
-      transition: all .15s cubic-bezier(.4,0,.2,1);
+      font-size: 15px; font-weight: 900; color: transparent;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
       user-select: none;
     }
     .tick:hover .tick-box { border-color: var(--text2); }
     .tick.yes .tick-box {
       background: var(--green); border-color: var(--green); color: #fff;
-      box-shadow: 0 0 8px rgba(14,159,110,.38); transform: scale(1.1);
+      box-shadow: 0 0 10px var(--green-glow); transform: scale(1.08);
     }
-    .tick.no .tick-box { background: var(--red); border-color: var(--red); color: #fff; }
-    /* â”€â”€â”€ EDIT HABIT NAME â”€â”€â”€ */
-    .edit-name {
-      width: 100%; border: 0; background: transparent; color: var(--text);
-      font-family: inherit; font-size: 13px; font-weight: 500; padding: 4px 0; outline: none;
-      border-bottom: 1px solid transparent; transition: border-color .18s;
+    .tick.no .tick-box {
+      background: var(--red); border-color: var(--red); color: #fff;
+      box-shadow: 0 0 10px var(--red-glow);
     }
-    .edit-name:focus { border-bottom-color: var(--brand); }
-    .edit-name:hover { border-bottom-color: var(--border2); }
-    /* â”€â”€â”€ TFOOT â”€â”€â”€ */
-    tfoot th { background: var(--surface2); color: var(--text2); font-size: 11px; font-weight: 700; letter-spacing: .3px; position: sticky; bottom: 0; z-index: 5; }
-    tfoot .col-num { z-index: 12; }
-    tfoot .col-habit { z-index: 12; background: var(--surface2); text-align: left; }
-    .daily-count { font-size: 12px; font-weight: 700; }
+
+    /* Daily counts in tfoot */
+    .daily-count { font-size: 12px; font-weight: 800; }
     .daily-count.good { color: var(--green); }
     .daily-count.mid  { color: var(--yellow); }
     .daily-count.bad  { color: var(--red); }
-    /* â”€â”€â”€ FOOTER NOTE â”€â”€â”€ */
+
+    /* ─── FOOTER NOTE ─── */
     .footer-note {
       text-align: center; font-size: 11px; color: var(--text3); margin-top: 14px;
-      padding: 10px 14px; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 10px; line-height: 1.7;
+      padding: 10px 16px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; line-height: 1.7;
     }
     .footer-note b { color: var(--text2); }
-    /* â”€â”€â”€ TOAST â”€â”€â”€ */
+
+    /* ─── TOAST NOTIFICATION ─── */
     #toast {
       position: fixed; bottom: 24px; left: 50%;
       transform: translateX(-50%) translateY(80px);
       background: var(--surface2); border: 1px solid var(--border2);
-      color: var(--text); padding: 10px 22px; border-radius: 12px;
-      font-size: 13px; font-weight: 600; z-index: 999;
-      box-shadow: var(--shadow); transition: transform .3s cubic-bezier(.4,0,.2,1), opacity .3s;
+      color: var(--text); padding: 11px 24px; border-radius: 14px;
+      font-size: 13px; font-weight: 700; z-index: 9999;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
       opacity: 0; white-space: nowrap; pointer-events: none;
     }
     #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-    /* â”€â”€â”€ RESPONSIVE â”€â”€â”€ */
-    @media (max-width: 600px) {
-      .btn { padding: 7px 10px; font-size: 12px; }
-      .col-habit { width: 145px; min-width: 130px; }
-      .card { min-width: 80px; padding: 7px 12px; }
-      .card b { font-size: 18px; }
+
+    /* ─── EXPORT POPUP MODAL ─── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      align-items: center; justify-content: center; padding: 16px;
+      animation: modalFadeIn 0.2s ease-out;
     }
-    tbody tr:hover td.col-habit, tbody tr:hover td.col-num { background: var(--surface2); }
+    .modal-overlay.open { display: flex; }
+    @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modalPop { from { transform: scale(0.92) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+
+    .modal-box {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 20px; padding: 24px 20px; width: 100%; max-width: 400px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6); animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 14px; right: 16px; width: 32px; height: 32px;
+      border: 0; border-radius: 10px; background: var(--surface2);
+      color: var(--text2); font-size: 20px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; transition: all 0.15s;
+    }
+    .modal-close:hover { background: var(--red); color: #fff; }
+    .modal-title {
+      font-size: 18px; font-weight: 800; color: var(--text);
+      display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+    }
+    .modal-sub {
+      font-size: 12px; color: var(--text3); margin-bottom: 16px;
+    }
+    .modal-label {
+      font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 6px; display: block;
+    }
+    .modal-select {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--border2);
+      border-radius: 12px; background: var(--surface2); color: var(--text);
+      font-family: inherit; font-size: 14px; font-weight: 700; outline: none;
+      cursor: pointer; margin-bottom: 14px; transition: border-color 0.2s;
+    }
+    .modal-select:focus { border-color: var(--brand); }
+    .modal-select option { background: var(--surface); color: var(--text); }
+
+    /* Live Month Summary in Export Modal */
+    .modal-preview-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px; margin-bottom: 18px;
+    }
+    .modal-preview-header {
+      font-size: 13px; font-weight: 800; color: var(--text);
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+    }
+    .modal-preview-stats {
+      display: flex; justify-content: space-around; text-align: center;
+    }
+    .modal-preview-item b {
+      display: block; font-size: 16px; font-weight: 800; color: var(--brand);
+    }
+    .modal-preview-item span {
+      font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase;
+    }
+
+    /* Modal download buttons */
+    .modal-btns {
+      display: flex; gap: 10px;
+    }
+    .modal-btns .btn {
+      flex: 1; justify-content: center; padding: 12px 10px; font-size: 14px; border-radius: 12px;
+    }
+    .btn-excel {
+      background: linear-gradient(135deg, #059669, #10b981); color: #fff;
+      box-shadow: 0 4px 14px var(--green-glow);
+    }
+    .btn-pdf {
+      background: linear-gradient(135deg, #dc2626, #ef4444); color: #fff;
+      box-shadow: 0 4px 14px var(--red-glow);
+    }
+
+    /* ─── RESPONSIVE BREAKPOINTS ─── */
+    @media (min-width: 769px) {
+      .col-habit { width: 220px; min-width: 180px; }
+      .edit-name { font-size: 13px; }
+    }
+
+    @media (max-width: 768px) {
+      header { padding: 8px 10px 10px; }
+      .header-top { gap: 6px; }
+      .logo-icon { width: 34px; height: 34px; font-size: 17px; border-radius: 10px; }
+      h1 { font-size: 16px; }
+      .subtitle { font-size: 10px; }
+      .theme-toggle { width: 34px; height: 34px; font-size: 16px; border-radius: 10px; }
+
+      .controls { gap: 6px; margin-top: 8px; }
+      .month-nav { padding: 3px 5px; gap: 3px; }
+      .btn-nav { width: 28px; height: 28px; font-size: 16px; }
+      select.month-select { font-size: 12px; padding: 2px 4px; }
+      .btn { padding: 6px 10px; font-size: 11px; border-radius: 8px; }
+
+      .summary-area { gap: 8px; margin-top: 8px; }
+      .card-stat { min-width: 74px; padding: 6px 8px; border-radius: 12px; }
+      .card-stat b { font-size: 18px; }
+      .card-stat span { font-size: 9px; }
+
+      .circle-progress-wrap { width: 84px; height: 84px; }
+      .circle-progress-svg { width: 84px; height: 84px; }
+      .circle-bg, .circle-fill { stroke-width: 7; }
+      .circle-pct { font-size: 17px; }
+      .circle-label { font-size: 7px; }
+      .circle-sub { font-size: 8px; }
+
+      .wrap { padding: 6px 6px 24px; }
+      .table-container { max-height: calc(100vh - 215px); }
+
+      /* MOBILE STICKY: Pin # and Habit on the left so they never scroll away */
+      .col-num { width: 26px; min-width: 26px; font-size: 11px; }
+      .col-habit { width: 140px; min-width: 130px; left: 26px; padding: 2px 6px; }
+      .edit-name { font-size: 11.5px; }
+      .col-day { width: 36px; min-width: 36px; font-size: 11px; }
+      .col-total { width: 68px; min-width: 68px; font-size: 11px; }
+      th, td { height: 40px; }
+      .tick { height: 39px; }
+      .tick-box { width: 23px; height: 23px; font-size: 13px; }
+      .modal-box { padding: 20px 16px; border-radius: 18px; }
+      .modal-btns .btn { padding: 11px 8px; font-size: 13px; }
+    }
   </style>
 </head>
 
 <body>
 
-  <!-- Firebase not configured banner -->
-  <div id="fbBanner">
-    &#9888;&#65039; Firebase config set nathi &mdash; data sirf is browser ma save thase.
-    index.html ma <b>firebaseConfig</b> values fill karo (YOUR_API_KEY wagere).
-  </div>
-
   <header>
     <div class="header-top">
-      <div class="logo-icon">&#128202;</div>
-      <div>
-        <h1>સેલ્ફ ડિસીપ્લીન ચાર્ટ</h1>
-        <p class="subtitle">સ્વાસ્થ્ય + નોલેજ + વર્ક + રેકોર્ડ</p>
+      <div class="title-group">
+        <div class="logo-icon">&#128202;</div>
+        <div>
+          <h1>&#2744;&#2759;&#2738;&#2765;&#2731; &#2721;&#2751;&#2744;&#2752;&#2730;&#2765;&#2738;&#2752;&#2728; &#2714;&#2750;&#2736;&#2765;&#2719;</h1>
+          <p class="subtitle">&#2744;&#2765;&#2741;&#2750;&#2744;&#2765;&#2725;&#2765;&#2735; + &#2728;&#2763;&#2738;&#2759;&#2716; + &#2741;&#2736;&#2765;&#2709; + &#2736;&#2759;&#2709;&#2763;&#2736;&#2765;&#2721;</p>
+        </div>
       </div>
-      <!-- Dark / Light mode toggle -->
-      <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle dark/light mode" title="Toggle Dark / Light Mode">🌙</button>
+      <!-- Theme Switcher -->
+      <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle dark/light theme" title="Toggle Theme">&#127769;</button>
     </div>
 
+    <!-- Month Controls & Action Buttons -->
     <div class="controls">
       <div class="month-nav">
         <button class="btn-nav" id="prevBtn" onclick="changeMonth(-1)" aria-label="Previous month">&#8249;</button>
-        <select id="month" class="month-select" onchange="render()" aria-label="Month select"></select>
+        <select id="month" class="month-select" onchange="render()" aria-label="Select month"></select>
         <button class="btn-nav" id="nextBtn" onclick="changeMonth(1)" aria-label="Next month">&#8250;</button>
       </div>
-      <button class="btn btn-ghost" onclick="goToday()" id="todayBtn">&#128197; Today</button>
+      <button class="btn btn-today" onclick="goToday()" id="todayBtn">&#128197; Today</button>
+      <!-- Single Export Button that opens popup -->
+      <button class="btn btn-export" onclick="openExportModal()" id="exportBtn">&#128229; Export</button>
       <button class="btn btn-danger" onclick="resetMonth()" id="resetBtn">&#128465; Reset</button>
     </div>
 
@@ -286,40 +625,103 @@
       <span id="syncLabel">Connecting&#8230;</span>
     </div>
 
-    <!-- 3 summary cards ONLY: YES, NO, PROGRESS -->
-    <div class="summary">
-      <div class="card"><b id="yesCount">0</b><span>YES &#10003;</span></div>
-      <div class="card"><b id="noCount">0</b><span>NO &#10007;</span></div>
-      <div class="card"><b id="percent">0%</b><span>PROGRESS</span></div>
-    </div>
-
-    <div class="progress-wrap">
-      <div class="progress-label">
-        <span>Month Progress</span>
-        <span id="progressLabel">0 / 0 YES</span>
+    <!-- Summary Area: YES Stat, Glowing Circular Progress, NO Stat -->
+    <div class="summary-area">
+      <div class="card-stat yes-stat">
+        <b id="yesCount">0</b>
+        <span>YES &#10003;</span>
       </div>
-      <div class="progress"><div id="bar"></div></div>
+
+      <!-- Next-Level SVG Circular Progress Gauge -->
+      <div class="circle-progress-wrap" id="circleWrap">
+        <div class="circle-pulse-indicator" id="pulseIndicator"></div>
+        <svg class="circle-progress-svg" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="circleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#38bdf8" />
+              <stop offset="50%" stop-color="#3b82f6" />
+              <stop offset="100%" stop-color="#10b981" />
+            </linearGradient>
+          </defs>
+          <circle class="circle-bg" cx="50" cy="50" r="40" />
+          <circle class="circle-fill" id="circleBar" cx="50" cy="50" r="40" />
+        </svg>
+        <div class="circle-content">
+          <span class="circle-pct" id="circlePct">0%</span>
+          <span class="circle-label">PROGRESS</span>
+          <span class="circle-sub" id="circleSub">0/0</span>
+        </div>
+      </div>
+
+      <div class="card-stat no-stat">
+        <b id="noCount">0</b>
+        <span>NO &#10007;</span>
+      </div>
     </div>
   </header>
 
+  <!-- Mobile Swipe/Scroll Hint -->
+  <div class="scroll-hint">
+    <span>&#8644; Scroll / Swipe horizontally to see all days</span>
+  </div>
+
   <div class="wrap">
-    <div class="table-container">
-      <table id="chart" role="grid" aria-label="Habit tracker chart"></table>
+    <div class="table-container" id="tableContainer">
+      <table id="chart" role="grid" aria-label="Self discipline habit tracking chart"></table>
     </div>
-    <div class="footer-note">Cell પર વારંવાર ટચ કરો: <b>ખાલી → ✓ YES → ✗ NO → ખાલી</b>.
-      Data આ browserમાં સાચવાય છે. Browser/site data clear કરશો તો local data દૂર થઈ શકે છે.</div>
+
+    <div class="footer-note">
+      Cell પર ક્લિક કરો: <b>ખાલી &#8594; &#10003; YES &#8594; &#10007; NO &#8594; ખાલી</b>.
+      ડેટા રીયલ-ટાઇમ ક્લાઉડ (Firebase) અને લોકલ બ્રાઉઝરમાં આપોઆપ સુરક્ષિત સેવ થાય છે.
+    </div>
+  </div>
+
+  <!-- Export Popup Modal with Month Selection & Excel / PDF Buttons -->
+  <div class="modal-overlay" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeExportModal()" aria-label="Close modal">&times;</button>
+      <div class="modal-title" id="modalTitle">&#128229; Export Data</div>
+      <div class="modal-sub">Select month and export to Excel (.xlsx) or PDF (.pdf)</div>
+
+      <label class="modal-label" for="exportMonthSelect">Select Month</label>
+      <select class="modal-select" id="exportMonthSelect" onchange="onExportMonthChange()"></select>
+
+      <!-- Live summary of selected export month -->
+      <div class="modal-preview-card">
+        <div class="modal-preview-header">
+          <span id="modalPreviewMonth">&#8212;</span>
+          <span id="modalPreviewDays" style="color:var(--text3);font-size:11px;">&#8212;</span>
+        </div>
+        <div class="modal-preview-stats">
+          <div class="modal-preview-item">
+            <b id="modalPreviewYes">0</b>
+            <span>Total YES</span>
+          </div>
+          <div class="modal-preview-item">
+            <b id="modalPreviewHabits">16</b>
+            <span>Habits</span>
+          </div>
+          <div class="modal-preview-item">
+            <b id="modalPreviewPct">0%</b>
+            <span>Progress</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="modal-btns">
+        <button class="btn btn-excel" id="btnExportExcel" onclick="exportExcel()">&#128196; Excel Export</button>
+        <button class="btn btn-pdf" id="btnExportPDF" onclick="exportPDF()">&#128195; PDF Export</button>
+      </div>
+    </div>
   </div>
 
   <div id="toast" role="status" aria-live="polite"></div>
 
   <script>
-    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       FIREBASE CONFIG
-       Steps:
-       1. Go to https://console.firebase.google.com
-       2. Open your project -> Project Settings -> Your apps -> SDK
-       3. Copy the config object and paste below
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+    /* ══════════════════════════════════════════════════════════════
+       FIREBASE REALTIME CONFIG
+    ══════════════════════════════════════════════════════════════ */
     const firebaseConfig = {
       apiKey:            "AIzaSyB7DHGR4SCQUPeBO9esVk-kF_kq67XQ",
       authDomain:        "my-discipline-chart-a4c8f.firebaseapp.com",
@@ -330,7 +732,6 @@
       appId:             "1:425700964799:web:71b3051ba046eff0d4090a"
     };
 
-    /* â”€â”€ Firebase Init â”€â”€ */
     let _fbDb = null;
     const _fbReady = firebaseConfig.apiKey !== "YOUR_API_KEY";
 
@@ -338,58 +739,56 @@
       try {
         firebase.initializeApp(firebaseConfig);
         _fbDb = firebase.database();
-        // Real-time connection indicator
         _fbDb.ref(".info/connected").on("value", snap => {
           const ok = snap.val() === true;
           document.getElementById("syncDot").className = "sync-dot " + (ok ? "ok" : "err");
           document.getElementById("syncLabel").textContent = ok
-            ? "Firebase synced âœ“"
-            : "Offline â€” local only";
+            ? "Firebase Synced \u2713"
+            : "Offline \u2013 Local Only";
         });
       } catch(e) {
         console.warn("Firebase init error:", e);
         document.getElementById("syncDot").className = "sync-dot err";
-        document.getElementById("syncLabel").textContent = "Firebase error";
+        document.getElementById("syncLabel").textContent = "Firebase Error";
       }
     } else {
-      document.getElementById("fbBanner").style.display = "block";
       document.getElementById("syncDot").className = "sync-dot";
-      document.getElementById("syncLabel").textContent = "Firebase not configured â€” local only";
+      document.getElementById("syncLabel").textContent = "Local Only";
     }
 
-    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       HABITS
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+    /* ══════════════════════════════════════════════════════════════
+       HABITS (16 GUJARATI HABITS)
+    ══════════════════════════════════════════════════════════════ */
     const DEFAULT_HABITS = [
-      "પ્રાર્થના + મેડિટેશન",
-      "સૂર્ય નમસ્કાર",
-      "30 મિનિટ વોકિંગ",
-      "વાંચન ઘરે",
-      "વાંચન ઓફિસે",
-      "વિડિયો ઘરે / ઓફિસે",
+      "\u0AAA\u0ACD\u0AB0\u0ABE\u0AB0\u0ACD\u0AA5\u0AA8\u0ABE + \u0AAE\u0AC7\u0AA1\u0ABF\u0A9F\u0AC7\u0AB6\u0AA8",
+      "\u0AB8\u0AC2\u0AB0\u0ACD\u0AAF \u0AA8\u0AAE\u0AB8\u0ACD\u0A95\u0ABE\u0AB0",
+      "30 \u0AAE\u0ABF\u0AA8\u0ABF\u0A9F \u0AB5\u0ACB\u0A95\u0ABF\u0A82\u0A97",
+      "\u0AB5\u0ABE\u0A82\u0A9A\u0AA8 \u0A98\u0AB0\u0AC7",
+      "\u0AB5\u0ABE\u0A82\u0A9A\u0AA8 \u0A93\u0AAB\u0ABF\u0AB8\u0AC7",
+      "\u0AB5\u0ABF\u0AA1\u0ABF\u0AAF\u0ACB \u0A98\u0AB0\u0AC7 / \u0A93\u0AAB\u0ABF\u0AB8\u0AC7",
       "W TIME 9:00am to 9:00pm",
-      "1 કલાક ભાવફેરી",
-      "ગોલ વિઝ્યુઅલાઇઝ",
-      "5 કોલ",
+      "1 \u0A95\u0AB2\u0ABE\u0A95 \u0AAD\u0ABE\u0AB5\u0AAB\u0AC7\u0AB0\u0AC0",
+      "\u0A97\u0ACB\u0AB2 \u0AB5\u0ABF\u0A9D\u0ACD\u0AAF\u0AC1\u0A85\u0AB2\u0ABE\u0A87\u0A9D",
+      "5 \u0A95\u0ACB\u0AB2",
       "1 Agent Meet",
       "1 BNI + Client",
       "Status",
-      "કોલેશન + પેન્ડિંગ કામ",
-      "રિપોર્ટિંગ આપવું",
-      "બુક લખવી"
+      "\u0A95\u0ACB\u0AB2\u0AC7\u0AB6\u0AA8 + \u0AAA\u0AC7\u0AA8\u0ACD\u0AA1\u0ABF\u0A82\u0A97 \u0A95\u0ABE\u0AAE",
+      "\u0AB0\u0ABF\u0AAA\u0ACB\u0AB0\u0ACD\u0A9F\u0ABF\u0A82\u0A97 \u0A86\u0AAA\u0AB5\u0AC1\u0A82",
+      "\u0AAC\u0AC1\u0A95 \u0AB2\u0A96\u0AB5\u0AC0"
     ];
     const HABIT_NAMES_KEY = "discipline_habit_names";
     let habits = [...DEFAULT_HABITS];
 
-    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       GUJARATI MONTHS
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+    /* ══════════════════════════════════════════════════════════════
+       MONTHS
+    ══════════════════════════════════════════════════════════════ */
     const MONTHS = [
-      "જાન્યુઆરી", "ફેબ્રુઆરી", "માર્ચ", "એપ્રિલ", "મે", "જૂન",
-      "જુલાઈ", "ઓગસ્ટ", "સપ્ટેમ્બર", "ઓક્ટોબર", "નવેમ્બર", "ડિસેમ્બર"
+      "\u0A9C\u0ABE\u0AA8\u0ACD\u0AAF\u0AC1\u0A86\u0AB0\u0AC0", "\u0AAB\u0AC7\u0AAC\u0ACD\u0AB0\u0AC1\u0A86\u0AB0\u0AC0", "\u0AAE\u0ABE\u0AB0\u0ACD\u0A9A", "\u0A8F\u0AAA\u0ACD\u0AB0\u0ABF\u0AB2", "\u0AAE\u0AC7", "\u0A9C\u0AC2\u0AA8",
+      "\u0A9C\u0AC1\u0AB2\u0ABE\u0A88", "\u0A93\u0A97\u0AB8\u0ACD\u0A9F", "\u0AB8\u0AAA\u0ACD\u0A9F\u0AC7\u0AAE\u0ACD\u0AAC\u0AB0", "\u0A93\u0A95\u0ACD\u0A9F\u0ACB\u0AAC\u0AB0", "\u0AA8\u0AB5\u0AC7\u0AAE\u0ACD\u0AAC\u0AB0", "\u0AA1\u0ABF\u0AB8\u0AC7\u0AAE\u0ACD\u0AAC\u0AB0"
     ];
 
-    /* â”€â”€ State â”€â”€ */
+    /* ── State ── */
     const now = new Date();
     const monthSelect = document.getElementById("month");
     let selectedMonth = new URLSearchParams(location.search).get("month")
@@ -400,8 +799,9 @@
     let _fbListener = null;
     let _fbListenMonth = null;
     let _isRendering = false;
+    let _lastPct = 0;
 
-    /* â”€â”€ Load habit names â”€â”€ */
+    /* ── Habit names management ── */
     function loadHabitNames() {
       try {
         const s = JSON.parse(localStorage.getItem(HABIT_NAMES_KEY) || "null");
@@ -413,8 +813,9 @@
       if (_fbDb) _fbDb.ref("habit_names").set(habits).catch(()=>{});
     }
 
-    /* â”€â”€ Build month dropdown â”€â”€ */
+    /* ── Build Month Dropdown ── */
     function buildMonthOptions() {
+      monthSelect.innerHTML = "";
       for (let y = 2025; y <= 2035; y++) {
         for (let m = 1; m <= 12; m++) {
           const o = document.createElement("option");
@@ -426,22 +827,41 @@
       monthSelect.value = selectedMonth;
     }
 
-    /* â”€â”€ Storage helpers â”€â”€ */
-    function storageKey() { return "discipline_" + selectedMonth; }
-    function load() {
-      try { return JSON.parse(localStorage.getItem(storageKey()) || "{}"); }
+    /* ── Storage Helpers ── */
+    function storageKey(m) { return "discipline_" + (m || selectedMonth); }
+    function load(m) {
+      try { return JSON.parse(localStorage.getItem(storageKey(m)) || "{}"); }
       catch(e) { return {}; }
     }
-    function daysInMonth() {
-      const [y, m] = selectedMonth.split("-").map(Number);
-      return new Date(y, m, 0).getDate();
+    function daysInMonth(m) {
+      const month = m || selectedMonth;
+      const [y, mo] = month.split("-").map(Number);
+      return new Date(y, mo, 0).getDate();
     }
     function isToday(d) {
       const [y, m] = selectedMonth.split("-").map(Number);
       return now.getFullYear()===y && now.getMonth()+1===m && now.getDate()===d;
     }
 
-    /* â”€â”€ Navigation â”€â”€ */
+    /* ── Asynchronously fetch month data (Firebase with LocalStorage fallback) ── */
+    async function getMonthData(m) {
+      const localData = load(m);
+      if (_fbDb) {
+        try {
+          const snap = await _fbDb.ref("discipline/" + m).once("value");
+          const val = snap.val();
+          if (val && typeof val === "object") {
+            try { localStorage.setItem(storageKey(m), JSON.stringify(val)); } catch(e) {}
+            return val;
+          }
+        } catch(e) {
+          console.warn("Could not fetch remote data for " + m, e);
+        }
+      }
+      return localData;
+    }
+
+    /* ── Navigation ── */
     function changeMonth(dir) {
       const d = new Date(selectedMonth + "-01T00:00:00");
       d.setMonth(d.getMonth() + dir);
@@ -453,13 +873,12 @@
       selectedMonth = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
       monthSelect.value = selectedMonth;
       render();
-      showToast("&#128197; Current month loaded");
+      showToast("\uD83D\uDDD3 Current month loaded");
     }
 
-    /* â”€â”€ Firebase real-time listener â”€â”€ */
+    /* ── Firebase Listener ── */
     function subscribeFirebase() {
       if (!_fbDb) return;
-      // Unsubscribe old listener
       if (_fbListenMonth && _fbListener) {
         _fbDb.ref("discipline/" + _fbListenMonth).off("value", _fbListener);
         _fbListener = null;
@@ -468,134 +887,128 @@
       const ref = _fbDb.ref("discipline/" + selectedMonth);
       _fbListener = ref.on("value", snap => {
         const fbData = snap.val() || {};
-        // Cache locally
         try { localStorage.setItem(storageKey(), JSON.stringify(fbData)); } catch(e) {}
-        // Re-render if not mid-interaction
         if (!_isRendering) renderFromData(fbData);
       }, err => console.warn("Firebase listen error:", err));
     }
 
-    /* â”€â”€ Click a cell: YES -> NO -> empty -> cycle â”€â”€ */
+    /* ── Tick Interaction: YES -> NO -> Empty -> YES ── */
     function cycle(h, d) {
       _isRendering = true;
       const data = load();
       const k = `${h}_${d}`;
       data[k] = data[k] === "yes" ? "no" : data[k] === "no" ? "" : "yes";
       if (!data[k]) delete data[k];
-      // Optimistic local save
+
       try { localStorage.setItem(storageKey(), JSON.stringify(data)); } catch(e) {}
-      // Update just the clicked cell
       updateCell(h, d, data[k] || "");
-      // Live-update row total for habit h
       updateRowTotal(h, data);
-      // Live-update daily column count for day d
       updateDailyCol(d, data);
-      // Refresh summary cards
-      updateSummary(data);
-      // Write to Firebase async
+      updateSummary(data, true);
+
       if (_fbDb) _fbDb.ref("discipline/" + selectedMonth).set(data).catch(()=>{});
       _isRendering = false;
     }
 
-    /* Live-update: row total cell for habit h */
+    /* Live Update: Single Row Total (NO PERCENTAGE - clean count only!) */
     function updateRowTotal(h, data) {
       const days = daysInMonth();
       let yes = 0;
       for (let d = 1; d <= days; d++) {
         if (data[`${h}_${d}`] === "yes") yes++;
       }
-      const pct = days ? Math.round(yes / days * 100) : 0;
       const el = document.getElementById(`total-h-${h}`);
-      if (el) el.innerHTML = `${yes}/${days}<br><small style="color:var(--text3);font-size:10px">${pct}%</small>`;
+      if (el) el.innerHTML = `<span class="total-pill">${yes}/${days}</span>`;
     }
 
-    /* Live-update: daily count for day d in tfoot */
+    /* Live Update: Daily Count Column & Grand Total */
     function updateDailyCol(d, data) {
       let c = 0;
       for (let h = 0; h < habits.length; h++) {
         if (data[`${h}_${d}`] === "yes") c++;
       }
-      const cls = c >= Math.ceil(habits.length * .8) ? "good"
-                : c >= Math.ceil(habits.length * .5) ? "mid"
+      const cls = c >= Math.ceil(habits.length * 0.8) ? "good"
+                : c >= Math.ceil(habits.length * 0.5) ? "mid"
                 : c > 0 ? "bad" : "";
       const el = document.getElementById(`daily-d-${d}`);
-      if (el) { el.className = `daily-count ${cls}`; el.textContent = c || ""; }
-      // Update tfoot grand total
+      if (el) {
+        el.className = `daily-count ${cls}`;
+        el.textContent = c || "";
+      }
       const totalEl = document.getElementById("tfoot-total");
-      if (totalEl) totalEl.textContent = Object.values(data).filter(v => v === "yes").length;
+      if (totalEl) {
+        const totalYes = Object.values(data).filter(v => v === "yes").length;
+        totalEl.innerHTML = `<span class="total-pill grand-total">${totalYes}</span>`;
+      }
     }
 
-    /* â”€â”€ Update single cell (optimistic) â”€â”€ */
+    /* Live Update: Cell */
     function updateCell(h, d, state) {
       const el = document.querySelector(`[data-h="${h}"][data-d="${d}"]`);
       if (!el) return;
       el.className = "tick " + state;
       const box = el.querySelector(".tick-box");
       if (box) box.textContent = state === "yes" ? "\u2713" : state === "no" ? "\u2717" : "";
-      el.title = state === "yes" ? "YES \u2713 \u2014 click for NO"
-               : state === "no"  ? "NO \u2717 \u2014 click to clear"
-               : "Empty \u2014 click for YES";
+      el.title = state === "yes" ? "YES \u2713 \u2014 Tap for NO"
+               : state === "no"  ? "NO \u2717 \u2014 Tap to clear"
+               : "Empty \u2014 Tap for YES";
     }
 
-    /* â”€â”€ Render from data object â”€â”€ */
+    /* ── Render Table from Data ── */
     function renderFromData(data) {
       const days = daysInMonth();
 
       let html = "<thead><tr>";
       html += '<th class="col-num">#</th>';
-      html += '<th class="col-habit">નામ / Habit</th>';
+      html += '<th class="col-habit">Habit Name</th>';
       for (let d = 1; d <= days; d++) {
         const tod = isToday(d);
         html += `<th class="col-day${tod ? " today-col" : ""}">${d}</th>`;
       }
+      // TOTAL HEADER
       html += '<th class="col-total">TOTAL</th></tr></thead>';
 
       html += "<tbody>";
       for (let h = 0; h < habits.length; h++) {
-        let yes = 0, no = 0;
+        let yes = 0;
         for (let d = 1; d <= days; d++) {
           if (data[`${h}_${d}`] === "yes") yes++;
-          if (data[`${h}_${d}`] === "no")  no++;
         }
-        const pct = days ? Math.round(yes/days*100) : 0;
         html += `<tr>`;
         html += `<td class="col-num">${h+1}</td>`;
-        html += `<td class="col-habit"><input class="edit-name" value="${escapeHtml(habits[h])}" aria-label="Habit ${h+1}" onchange="editHabit(${h},this.value)"></td>`;
+        html += `<td class="col-habit"><div class="habit-scroll-box"><input class="edit-name" value="${escapeHtml(habits[h])}" aria-label="Habit ${h+1}" onchange="editHabit(${h},this.value)" title="${escapeHtml(habits[h])}"></div></td>`;
         for (let d = 1; d <= days; d++) {
           const state = data[`${h}_${d}`] || "";
           const tod   = isToday(d);
           const icon  = state === "yes" ? "\u2713" : state === "no" ? "\u2717" : "";
           html += `<td class="${tod ? "today-col" : ""}"><button class="tick ${state}" data-h="${h}" data-d="${d}" onclick="cycle(${h},${d})" title="${state || "Empty"}" aria-pressed="${state==="yes"}"><span class="tick-box">${icon}</span></button></td>`;
         }
-        html += `<td class="col-total" id="total-h-${h}">${yes}/${days}<br><small style="color:var(--text3);font-size:10px">${pct}%</small></td>`;
+        // TOTAL COLUMN (NO PERCENTAGE!)
+        html += `<td class="col-total" id="total-h-${h}"><span class="total-pill">${yes}/${days}</span></td>`;
         html += `</tr>`;
       }
       html += "</tbody>";
 
+      // FOOTER ROW
       html += "<tfoot><tr>";
       html += '<th class="col-num"></th>';
-      html += '<th class="col-habit" style="font-size:11px;font-weight:700">DAILY \u2713 YES</th>';
+      html += '<th class="col-habit" style="font-size:11px;font-weight:800;text-align:left;padding-left:8px;">DAILY \u2713</th>';
       for (let d = 1; d <= days; d++) {
         let c = 0;
         for (let h = 0; h < habits.length; h++) if (data[`${h}_${d}`] === "yes") c++;
-        const cls = c >= Math.ceil(habits.length*.8) ? "good"
-                  : c >= Math.ceil(habits.length*.5) ? "mid"
+        const cls = c >= Math.ceil(habits.length * 0.8) ? "good"
+                  : c >= Math.ceil(habits.length * 0.5) ? "mid"
                   : c > 0 ? "bad" : "";
-        // id for live update: daily-d-{d}
         html += `<th><span class="daily-count ${cls}" id="daily-d-${d}">${c || ""}</span></th>`;
       }
       const totalYes = Object.values(data).filter(v => v === "yes").length;
-      html += `<th class="col-total" id="tfoot-total">${totalYes}</th></tr></tfoot>`;
+      html += `<th class="col-total" id="tfoot-total"><span class="total-pill grand-total">${totalYes}</span></th></tr></tfoot>`;
 
       document.getElementById("chart").innerHTML = html;
-      updateSummary(data);
-
-      // Scroll today into view
-      const todCell = document.querySelector("th.today-col");
-      if (todCell) setTimeout(() => todCell.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"}), 60);
+      updateSummary(data, false);
     }
 
-    /* â”€â”€ Main render (called on month change) â”€â”€ */
+    /* ── Main Render (Month Switch) ── */
     function render() {
       selectedMonth = monthSelect.value;
       const u = new URL(location.href);
@@ -605,29 +1018,74 @@
       renderFromData(load());
     }
 
-    /* â”€â”€ Summary (3 cards: YES, NO, %) â”€â”€ */
-    function updateSummary(data) {
+    /* ── Animated Percentage Count-Up ── */
+    function animatePct(targetPct) {
+      const el = document.getElementById("circlePct");
+      if (!el) return;
+      const start = _lastPct;
+      const end = targetPct;
+      _lastPct = targetPct;
+      if (start === end) { el.textContent = end + "%"; return; }
+
+      const duration = 500;
+      const startTime = performance.now();
+      function step(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(start + (end - start) * ease);
+        el.textContent = current + "%";
+        if (progress < 1) requestAnimationFrame(step);
+        else el.textContent = end + "%";
+      }
+      requestAnimationFrame(step);
+    }
+
+    /* ── Summary & Next-Level Circular Progress Ring ── */
+    function updateSummary(data, pulse) {
       const vals  = Object.values(data);
       const yes   = vals.filter(v => v === "yes").length;
       const no    = vals.filter(v => v === "no").length;
       const total = habits.length * daysInMonth();
-      const pct   = total ? Math.round(yes/total*100) : 0;
-      document.getElementById("yesCount").textContent     = yes;
-      document.getElementById("noCount").textContent      = no;
-      document.getElementById("percent").textContent      = pct + "%";
-      document.getElementById("bar").style.width          = pct + "%";
-      document.getElementById("progressLabel").textContent = `${yes} / ${total} YES`;
+      const pct   = total ? Math.round(yes / total * 100) : 0;
+
+      document.getElementById("yesCount").textContent = yes;
+      document.getElementById("noCount").textContent  = no;
+
+      // Animate percentage text smoothly
+      animatePct(pct);
+      document.getElementById("circleSub").textContent = `${yes}/${total}`;
+
+      // Circumference for r=40 is 2 * PI * 40 = 251.327
+      const circumference = 251.3;
+      const offset = circumference - (pct / 100) * circumference;
+      const circleBar = document.getElementById("circleBar");
+      circleBar.style.strokeDashoffset = offset;
+
+      // Pulse animation effect on user click
+      if (pulse) {
+        const p = document.getElementById("pulseIndicator");
+        if (p) {
+          p.classList.remove("pulsing");
+          void p.offsetWidth; // trigger reflow
+          p.classList.add("pulsing");
+        }
+      }
     }
 
-    /* â”€â”€ Edit habit name â”€â”€ */
+    /* ── Edit Habit Name ── */
     function editHabit(i, value) {
-      if (value.trim()) { habits[i] = value.trim(); saveHabitNames(); showToast("Habit updated \u2713"); }
+      if (value.trim()) {
+        habits[i] = value.trim();
+        saveHabitNames();
+        showToast("Habit updated \u2713");
+      }
     }
 
-    /* â”€â”€ Reset month â”€â”€ */
+    /* ── Reset Month ── */
     function resetMonth() {
       const label = monthSelect.options[monthSelect.selectedIndex].text;
-      if (confirm(label + " ni badhi data delete karvi chhe?\nThis cannot be undone!")) {
+      if (confirm(label + " \u0AA8\u0ACB \u0AAC\u0AA7\u0ACB \u0AA1\u0AC7\u0A9F\u0ABE \u0AA1\u0ABF\u0AB2\u0AC0\u0A9F \u0A95\u0AB0\u0AB5\u0ACB \u0A9B\u0AC7?\nAre you sure you want to clear all data for this month?")) {
         localStorage.removeItem(storageKey());
         if (_fbDb) _fbDb.ref("discipline/" + selectedMonth).remove().catch(()=>{});
         render();
@@ -635,35 +1093,257 @@
       }
     }
 
-    /* â”€â”€ Share â”€â”€ */
-    /* ── Theme toggle ── */
+    /* ══════════════════════════════════════════════════════════════
+       EXPORT MODAL & FUNCTIONALITY
+    ══════════════════════════════════════════════════════════════ */
+    function openExportModal() {
+      const sel = document.getElementById("exportMonthSelect");
+      sel.innerHTML = "";
+      for (let y = 2025; y <= 2035; y++) {
+        for (let m = 1; m <= 12; m++) {
+          const o = document.createElement("option");
+          o.value = `${y}-${String(m).padStart(2,"0")}`;
+          o.textContent = `${MONTHS[m-1]} ${y}`;
+          sel.appendChild(o);
+        }
+      }
+      sel.value = selectedMonth;
+      onExportMonthChange();
+      document.getElementById("exportModal").classList.add("open");
+    }
+
+    function closeExportModal() {
+      document.getElementById("exportModal").classList.remove("open");
+    }
+
+    // Close on overlay backdrop tap
+    document.getElementById("exportModal").addEventListener("click", function(e) {
+      if (e.target === this) closeExportModal();
+    });
+
+    // When month changes inside the Export Modal
+    async function onExportMonthChange() {
+      const mVal = document.getElementById("exportMonthSelect").value;
+      const [y, m] = mVal.split("-").map(Number);
+      const label = `${MONTHS[m-1]} ${y}`;
+      const days = daysInMonth(mVal);
+
+      document.getElementById("modalPreviewMonth").textContent = label;
+      document.getElementById("modalPreviewDays").textContent = `${days} Days`;
+      document.getElementById("modalPreviewHabits").textContent = habits.length;
+
+      // Load data for the chosen month
+      const data = await getMonthData(mVal);
+      const yes = Object.values(data).filter(v => v === "yes").length;
+      const totalPossible = habits.length * days;
+      const pct = totalPossible ? Math.round(yes / totalPossible * 100) : 0;
+
+      document.getElementById("modalPreviewYes").textContent = yes;
+      document.getElementById("modalPreviewPct").textContent = pct + "%";
+    }
+
+    /* ── Build Export Table Rows ── */
+    async function buildExportRows(month) {
+      const data = await getMonthData(month);
+      const days = daysInMonth(month);
+      const rows = [];
+
+      // Header row
+      const header = ["#", "Habit Name"];
+      for (let d = 1; d <= days; d++) header.push(String(d));
+      header.push("TOTAL YES");
+      rows.push(header);
+
+      // Habit rows
+      for (let h = 0; h < habits.length; h++) {
+        const row = [h + 1, habits[h]];
+        let yes = 0;
+        for (let d = 1; d <= days; d++) {
+          const v = data[`${h}_${d}`] || "";
+          row.push(v === "yes" ? "\u2713" : v === "no" ? "\u2717" : "");
+          if (v === "yes") yes++;
+        }
+        row.push(`${yes}/${days}`);
+        rows.push(row);
+      }
+
+      // Footer row
+      const footer = ["", "DAILY YES"];
+      for (let d = 1; d <= days; d++) {
+        let c = 0;
+        for (let h = 0; h < habits.length; h++) if (data[`${h}_${d}`] === "yes") c++;
+        footer.push(c || "");
+      }
+      const totalYes = Object.values(data).filter(v => v === "yes").length;
+      footer.push(totalYes);
+      rows.push(footer);
+
+      return { rows, data, days };
+    }
+
+    /* ── 1. EXCEL EXPORT (.xlsx) ── */
+    async function exportExcel() {
+      const btn = document.getElementById("btnExportExcel");
+      const origText = btn.innerHTML;
+      btn.innerHTML = "&#9203; Downloading...";
+      btn.disabled = true;
+
+      const month = document.getElementById("exportMonthSelect").value;
+      const [y, m] = month.split("-").map(Number);
+      const label = `${MONTHS[m-1]} ${y}`;
+
+      try {
+        const { rows } = await buildExportRows(month);
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+
+        // Responsive column widths
+        const colWidths = rows[0].map((_, i) => ({
+          wch: i === 0 ? 5 : i === 1 ? 28 : (i === rows[0].length - 1 ? 12 : 5)
+        }));
+        ws['!cols'] = colWidths;
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, label.slice(0, 31));
+        XLSX.writeFile(wb, `Discipline_${month}.xlsx`);
+
+        showToast("\uD83D\uDCD7 Excel downloaded successfully!");
+        setTimeout(closeExportModal, 500);
+      } catch(e) {
+        console.error("Excel export error:", e);
+        showToast("\u274C Excel export failed!");
+      } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+      }
+    }
+
+    /* ── 2. PDF EXPORT (.pdf) WITH PIXEL-PERFECT GUJARATI RENDERING ── */
+    async function exportPDF() {
+      const btn = document.getElementById("btnExportPDF");
+      const origText = btn.innerHTML;
+      btn.innerHTML = "&#9203; Generating PDF...";
+      btn.disabled = true;
+
+      const month = document.getElementById("exportMonthSelect").value;
+      const [y, m] = month.split("-").map(Number);
+      const label = `${MONTHS[m-1]} ${y}`;
+
+      try {
+        const { rows, days } = await buildExportRows(month);
+
+        // Build offscreen printable HTML sheet with Google Gujarati font
+        const reportDiv = document.createElement("div");
+        reportDiv.style.cssText = `
+          width: 1100px;
+          padding: 20px 24px;
+          background: #ffffff;
+          color: #0f172a;
+          font-family: 'Noto Sans Gujarati', 'Inter', Arial, sans-serif;
+          position: absolute;
+          left: -9999px;
+          top: 0;
+        `;
+
+        let tableHtml = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:2px solid #2563eb;padding-bottom:8px;">
+            <div>
+              <h2 style="font-size:20px;font-weight:800;color:#1e3a8a;margin:0;">સેલ્ફ ડિસીપ્લીન ચાર્ટ (${label})</h2>
+              <p style="font-size:11px;color:#64748b;margin:2px 0 0;">Self Discipline Chart &mdash; Daily Habit Tracker</p>
+            </div>
+            <div style="font-size:12px;font-weight:700;color:#1e3a8a;">
+              Total Habits: 16 | Days: ${days}
+            </div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:10px;text-align:center;">
+            <thead>
+              <tr style="background:#1e40af;color:#ffffff;">
+        `;
+
+        rows[0].forEach((col, idx) => {
+          const align = idx === 1 ? "left" : "center";
+          const width = idx === 0 ? "24px" : idx === 1 ? "180px" : (idx === rows[0].length - 1 ? "60px" : "auto");
+          tableHtml += `<th style="border:1px solid #94a3b8;padding:5px 3px;text-align:${align};width:${width};font-size:10px;">${col}</th>`;
+        });
+        tableHtml += `</tr></thead><tbody>`;
+
+        for (let r = 1; r < rows.length - 1; r++) {
+          const rowData = rows[r];
+          const bg = r % 2 === 0 ? "#f8fafc" : "#ffffff";
+          tableHtml += `<tr style="background:${bg};">`;
+          rowData.forEach((val, idx) => {
+            const align = idx === 1 ? "left;padding-left:6px;" : "center;";
+            let cellStyle = `border:1px solid #cbd5e1;padding:4px 2px;text-align:${align};`;
+            if (val === "\u2713") cellStyle += "color:#059669;font-weight:bold;font-size:12px;";
+            else if (val === "\u2717") cellStyle += "color:#dc2626;font-weight:bold;font-size:12px;";
+            else if (idx === rowData.length - 1) cellStyle += "font-weight:bold;color:#b45309;background:#fef3c7;";
+            tableHtml += `<td style="${cellStyle}">${val}</td>`;
+          });
+          tableHtml += `</tr>`;
+        }
+
+        // Tfoot daily count
+        const footerData = rows[rows.length - 1];
+        tableHtml += `<tr style="background:#e0e7ff;font-weight:bold;">`;
+        footerData.forEach((val, idx) => {
+          const align = idx === 1 ? "left;padding-left:6px;" : "center;";
+          tableHtml += `<td style="border:1.5px solid #6366f1;padding:5px 2px;text-align:${align};color:#1e3a8a;">${val}</td>`;
+        });
+        tableHtml += `</tr></tbody></table>`;
+
+        reportDiv.innerHTML = tableHtml;
+        document.body.appendChild(reportDiv);
+
+        // Generate high-resolution PDF
+        const opt = {
+          margin:       [6, 6, 6, 6],
+          filename:     `Discipline_${month}.pdf`,
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true, letterRendering: true, logging: false },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        await html2pdf().set(opt).from(reportDiv).save();
+        document.body.removeChild(reportDiv);
+
+        showToast("\uD83D\uDCD5 PDF downloaded successfully!");
+        setTimeout(closeExportModal, 500);
+      } catch(e) {
+        console.error("PDF export error:", e);
+        showToast("\u274C PDF export failed!");
+      } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+      }
+    }
+
+    /* ── Theme Handling ── */
     function applyTheme(theme) {
       document.documentElement.setAttribute("data-theme", theme);
       const btn = document.getElementById("themeToggleBtn");
-      if (btn) btn.textContent = theme === "dark" ? "🌙" : "☀️";
+      if (btn) btn.innerHTML = theme === "dark" ? "&#127769;" : "&#9728;&#65039;";
       try { localStorage.setItem("discipline_theme", theme); } catch(e) {}
     }
-
     function toggleTheme() {
       const cur = document.documentElement.getAttribute("data-theme") || "dark";
       applyTheme(cur === "dark" ? "light" : "dark");
     }
 
-    /* ── Toast ── */
+    /* ── Toast Notifications ── */
     let _toastTimer;
     function showToast(msg) {
       const t = document.getElementById("toast");
-      t.innerHTML = msg; t.classList.add("show");
+      t.innerHTML = msg;
+      t.classList.add("show");
       clearTimeout(_toastTimer);
-      _toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+      _toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
     }
 
-    /* ── Utils ── */
+    /* ── Utilities ── */
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     }
 
-    /* ── Boot ── */
+    /* ── Initial Boot ── */
     (function() {
       const savedTheme = localStorage.getItem("discipline_theme") || "dark";
       applyTheme(savedTheme);
@@ -672,7 +1352,6 @@
     buildMonthOptions();
 
     if (_fbDb) {
-      // Load habit names from Firebase on first boot
       _fbDb.ref("habit_names").once("value").then(snap => {
         const fbNames = snap.val();
         if (Array.isArray(fbNames)) {
